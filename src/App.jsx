@@ -258,7 +258,7 @@ function SiteHome() {
         </Parallax>
       </section>
 
-      {/* Banners promocionais dinâmicos (painel admin) */}
+      {/* Banner hero full-width — 100vw, fora de qualquer container */}
       {banners.error ? null : <BannerCarousel banners={publishedBanners} />}
 
       {/* Serviços */}

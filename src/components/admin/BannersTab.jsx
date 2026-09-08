@@ -8,6 +8,11 @@ const EMPTY_FORM = {
   button_text: '',
   button_url: '',
   content_position: 'center',
+  object_fit: 'cover',
+  object_position: 'center',
+  height_mode: 'default',
+  title_size: 'normal',
+  overlay_opacity: 55,
   featured: false,
   active: true,
   no_expiration: true,
@@ -22,6 +27,31 @@ const POSITIONS = [
   { value: 'center', label: 'Centro' },
   { value: 'left', label: 'Esquerda' },
   { value: 'right', label: 'Direita' },
+  { value: 'bottom-left', label: 'Inferior esquerdo' },
+  { value: 'bottom-center', label: 'Inferior centro' },
+  { value: 'bottom-right', label: 'Inferior direito' },
+];
+const OBJECT_POSITIONS = [
+  { value: 'center', label: 'Centro' },
+  { value: 'top', label: 'Centro superior' },
+  { value: 'bottom', label: 'Centro inferior' },
+  { value: 'left', label: 'Esquerda' },
+  { value: 'right', label: 'Direita' },
+  { value: 'top left', label: 'Superior esquerdo' },
+  { value: 'top right', label: 'Superior direito' },
+  { value: 'bottom left', label: 'Inferior esquerdo' },
+  { value: 'bottom right', label: 'Inferior direito' },
+];
+const HEIGHT_MODES = [
+  { value: 'compact', label: 'Compacta' },
+  { value: 'default', label: 'Padrão (hero)' },
+  { value: 'tall', label: 'Alta' },
+  { value: 'fullscreen', label: 'Tela cheia' },
+];
+const TITLE_SIZES = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'large', label: 'Grande' },
+  { value: 'huge', label: 'Enorme' },
 ];
 const fmt = (d) => (d ? new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
 
@@ -61,6 +91,7 @@ export default function BannersTab() {
   const [desktopFile, setDesktopFile] = useState(null);
   const [mobileFile, setMobileFile] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewViewport, setPreviewViewport] = useState('desktop');
   const dragIndex = useRef(null);
   const notify = useCallback((msg, type = 'ok') => {
     setToast({ msg, type });
@@ -90,6 +121,11 @@ export default function BannersTab() {
       title: b.title ?? '', subtitle: b.subtitle ?? '',
       button_text: b.button_text ?? '', button_url: b.button_url ?? '',
       content_position: b.content_position ?? 'center',
+      object_fit: b.object_fit ?? 'cover',
+      object_position: b.object_position ?? 'center',
+      height_mode: b.height_mode ?? 'default',
+      title_size: b.title_size ?? 'normal',
+      overlay_opacity: b.overlay_opacity ?? 55,
       featured: !!b.featured, active: b.active,
       no_expiration: b.no_expiration ?? true,
       start_at: toLocalInput(b.start_at), end_at: toLocalInput(b.end_at),
@@ -112,6 +148,11 @@ export default function BannersTab() {
         button_text: form.button_text.trim() || null,
         button_url: form.button_url.trim() || null,
         content_position: form.content_position,
+        object_fit: form.object_fit,
+        object_position: form.object_position,
+        height_mode: form.height_mode,
+        title_size: form.title_size,
+        overlay_opacity: Math.min(85, Math.max(0, Number(form.overlay_opacity) || 0)),
         featured: form.featured,
         active: form.active,
         no_expiration: form.no_expiration,
@@ -162,7 +203,9 @@ export default function BannersTab() {
       title: b.title ? `${b.title} (cópia)` : null,
       subtitle: b.subtitle, button_text: b.button_text, button_url: b.button_url,
       desktop_image_url: b.desktop_image_url, mobile_image_url: b.mobile_image_url,
-      content_position: b.content_position, featured: b.featured, active: false,
+      content_position: b.content_position, object_fit: b.object_fit, object_position: b.object_position,
+      height_mode: b.height_mode, title_size: b.title_size, overlay_opacity: b.overlay_opacity,
+      featured: b.featured, active: false,
       archived: false, no_expiration: b.no_expiration, start_at: b.start_at, end_at: b.end_at,
       duration: b.duration, sort_order: (items.at(-1)?.sort_order ?? 0) + 1,
     }).select().single();
@@ -262,6 +305,50 @@ export default function BannersTab() {
                 </div>
               );
             })}
+          </div>
+          {/* Enquadramento da imagem */}
+          <div className="rounded-2xl border border-plum-500/15 bg-plum-900/20 p-4 space-y-3">
+            <p className="text-xs uppercase tracking-widest text-lavender/70">Enquadramento da imagem</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-[11px] text-plum-200/60">Modo de encaixe</label>
+                <select value={form.object_fit} onChange={(e) => setForm({ ...form, object_fit: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none focus:border-lavender/70">
+                  <option value="cover">Preencher (cover)</option>
+                  <option value="contain">Imagem inteira (contain)</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] text-plum-200/60">Posição da imagem</label>
+                <select value={form.object_position} onChange={(e) => setForm({ ...form, object_position: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none focus:border-lavender/70">
+                  {OBJECT_POSITIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] text-plum-200/60">Altura do banner</label>
+                <select value={form.height_mode} onChange={(e) => setForm({ ...form, height_mode: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none focus:border-lavender/70">
+                  {HEIGHT_MODES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] text-plum-200/60">Tamanho do título</label>
+                <select value={form.title_size} onChange={(e) => setForm({ ...form, title_size: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none focus:border-lavender/70">
+                  {TITLE_SIZES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] text-plum-200/60">Escurecimento do overlay ({form.overlay_opacity}%)</label>
+              <input type="range" min={0} max={85} value={form.overlay_opacity}
+                onChange={(e) => setForm({ ...form, overlay_opacity: Number(e.target.value) })}
+                className="w-full accent-[#c9a7e8]" />
+            </div>
+            <p className="text-[10px] text-plum-200/50">
+              Use "contain" + posição para arte com texto incorporado; "cover" + posição para preservar rosto/cílios.
+            </p>
           </div>
           {/* Posição / duração */}
           <div className="grid grid-cols-2 gap-3">
@@ -387,7 +474,17 @@ export default function BannersTab() {
       {previewOpen && (
         <div onClick={() => setPreviewOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-3xl overflow-hidden rounded-2xl border border-lavender/20 shadow-2xl">
-            <BannerPreview banner={previewOpen} />
+            <div className="flex items-center justify-end gap-1 border-b border-white/10 bg-black/60 p-2">
+              {['desktop', 'mobile'].map((v) => (
+                <button key={v} onClick={() => setPreviewViewport(v)}
+                  className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-widest transition ${previewViewport === v ? 'bg-plum-600 text-white' : 'text-plum-300/70 hover:text-plum-200'}`}>
+                  {v === 'desktop' ? 'Desktop' : 'Mobile'}
+                </button>
+              ))}
+            </div>
+            <div className={`mx-auto ${previewViewport === 'mobile' ? 'max-w-[360px]' : ''} bg-black`}>
+              <BannerPreview banner={previewOpen} viewport={previewViewport} />
+            </div>
             <p className="bg-black/60 py-2 text-center text-xs text-plum-200/60">Prévia — clique fora para fechar</p>
           </div>
         </div>

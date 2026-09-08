@@ -1,9 +1,128 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /**
- * Carrossel premium de banners promocionais.
- * Recebe apenas banners já publicados (ativos, não arquivados, dentro do período).
+ * HERO de banners promocionais — full-width (100vw), sem container limitante.
+ * Cada banner controla: object-fit, object-position, altura, posição do conteúdo,
+ * tamanho do título, overlay e imagens separadas para desktop/mobile.
  */
+
+// Alturas por modo: [mobile, desktop]
+const HEIGHTS = {
+  compact: ['h-[55vw] max-h-[420px] min-h-[280px] sm:h-[40vh] md:h-[52vh] lg:h-[60vh]'],
+  default: ['h-[70vw] max-h-[560px] min-h-[320px] sm:h-[52vh] md:h-[62vh] lg:h-[72vh]'],
+  tall: ['h-[85vw] max-h-[720px] min-h-[380px] sm:h-[64vh] md:h-[76vh] lg:h-[86vh]'],
+  fullscreen: ['h-[92vw] max-h-[820px] min-h-[420px] sm:h-[76vh] md:h-[86vh] lg:h-[100vh]'],
+};
+
+const FITS = ['cover', 'contain'];
+const POS = {
+  center: 'object-center',
+  top: 'object-top',
+  bottom: 'object-bottom',
+  left: 'object-left',
+  right: 'object-right',
+  'top left': 'object-top-left',
+  'top right': 'object-top-right',
+  'bottom left': 'object-bottom-left',
+  'bottom right': 'object-bottom-right',
+};
+
+const CONTENT_POS = {
+  center: 'items-center justify-center text-center px-8',
+  left: 'items-center justify-start text-left px-8 sm:px-16 lg:px-24',
+  right: 'items-center justify-end text-right px-8 sm:px-16 lg:px-24',
+  'bottom-left': 'items-end justify-start text-left px-8 pb-16 sm:px-16 lg:px-24 sm:pb-20',
+  'bottom-center': 'items-end justify-center text-center px-8 pb-16 sm:pb-20',
+  'bottom-right': 'items-end justify-end text-right px-8 pb-16 sm:px-16 lg:px-24 sm:pb-20',
+};
+
+const TITLE_SIZES = {
+  normal: 'text-3xl sm:text-5xl lg:text-6xl',
+  large: 'text-4xl sm:text-6xl lg:text-7xl',
+  huge: 'text-5xl sm:text-7xl lg:text-8xl',
+};
+
+const slideHeight = (mode) => HEIGHTS[mode] || HEIGHTS.default;
+const fitClass = (fit) => (FITS.includes(fit) ? fit : 'cover');
+const posClass = (p) => POS[p] || 'object-center';
+
+function BannerSlide({ banner, active, isFirst }) {
+  const desktop = banner.desktop_image_url || banner.image_url;
+  const mobile = banner.mobile_image_url || desktop;
+  const fit = fitClass(banner.object_fit);
+  const cpos = CONTENT_POS[banner.content_position] || CONTENT_POS.center;
+  const overlay = Math.min(85, Math.max(0, Number(banner.overlay_opacity ?? 55))) / 100;
+
+  return (
+    <div
+      aria-hidden={!active}
+      className={`absolute inset-0 transition-all duration-1000 ease-out ${
+        active ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-[1.02]'
+      }`}
+    >
+      {desktop ? (
+        <picture>
+          {mobile && mobile !== desktop && <source media="(max-width: 767px)" srcSet={mobile} />}
+          <img
+            src={desktop}
+            alt={banner.title ?? 'Banner promocional'}
+            loading={isFirst && active ? 'eager' : 'lazy'}
+            decoding="async"
+            fetchpriority={isFirst ? 'high' : undefined}
+            className={`h-full w-full ${fit === 'contain' ? 'object-contain bg-[#0a0510]' : 'object-cover'} ${posClass(banner.object_position)}`}
+            onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
+          />
+        </picture>
+      ) : (
+        <div className="h-full w-full bg-gradient-to-br from-[#2a1235] via-[#160a1f] to-black" />
+      )}
+
+      {/* Gradiente de legibilidade configurável — não esconde a foto */}
+      <div
+        className="absolute inset-0 bg-gradient-to-t from-[#08030d] via-[#08030d]/50 to-transparent"
+        style={{ opacity: overlay }}
+      />
+      {banner.content_position === 'right' && (
+        <div className="absolute inset-0 bg-gradient-to-l from-[#08030d]/70 to-transparent" style={{ opacity: overlay }} />
+      )}
+      {banner.content_position === 'left' && (
+        <div className="absolute inset-0 bg-gradient-to-r from-[#08030d]/70 to-transparent" style={{ opacity: overlay }} />
+      )}
+
+      {/* Conteúdo centralizado em container interno — o banner continua full-width */}
+      <div className={`absolute inset-0 flex flex-col ${cpos}`}>
+        <div className="max-w-2xl">
+          {banner.featured && (
+            <span className="mb-4 inline-block rounded-full border border-amber-300/40 bg-amber-400/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.3em] text-amber-200 backdrop-blur-sm">
+              ✦ Destaque
+            </span>
+          )}
+          {banner.title && (
+            <h2 className={`font-serif text-gradient leading-tight drop-shadow-[0_2px_18px_rgba(0,0,0,0.85)] ${TITLE_SIZES[banner.title_size] || TITLE_SIZES.normal}`}>
+              {banner.title}
+            </h2>
+          )}
+          {banner.subtitle && (
+            <p className="mt-4 text-sm text-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)] sm:mt-5 sm:text-lg">
+              {banner.subtitle}
+            </p>
+          )}
+          {banner.button_text && (
+            <a
+              href={banner.button_url || '#'}
+              target={/^https?:/i.test(banner.button_url || '') ? '_blank' : undefined}
+              rel="noopener noreferrer"
+              className="btn-lux mt-7 inline-block rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-8 py-3.5 text-sm font-medium text-white shadow-xl shadow-plum-600/40 transition hover:brightness-110 sm:text-base"
+            >
+              {banner.button_text}
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BannerCarousel({ banners }) {
   const slides = useMemo(
     () => banners.filter((b) => b.desktop_image_url || b.image_url || b.title || b.subtitle),
@@ -13,8 +132,11 @@ export default function BannerCarousel({ banners }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const resumeTimer = useRef(null);
+  const touchX = useRef(null);
 
-  // Troca automática respeitando a duração de cada banner
+  useEffect(() => { if (index >= count) setIndex(0); }, [count, index]);
+
+  // Auto-play respeitando a duração de cada banner
   useEffect(() => {
     if (count <= 1 || paused) return;
     const duration = Math.max(2000, Number(slides[index]?.duration) || 6000);
@@ -22,33 +144,32 @@ export default function BannerCarousel({ banners }) {
     return () => clearTimeout(t);
   }, [index, count, paused, slides]);
 
-  useEffect(() => { if (index >= count) setIndex(0); }, [count, index]);
-
   const interact = useCallback((goto) => {
-    setIndex((i) => (goto !== undefined ? goto : (i + 1) % count));
+    if (goto === undefined) return;
+    setIndex(goto);
     setPaused(true);
     clearTimeout(resumeTimer.current);
     resumeTimer.current = setTimeout(() => setPaused(false), 8000);
-  }, [count]);
+  }, []);
 
   useEffect(() => () => clearTimeout(resumeTimer.current), []);
 
-  // Swipe no mobile
-  const touchX = useRef(null);
-  const onTouchStart = (e) => { touchX.current = e.touches[0].clientX; };
+  const onTouchStart = (e) => { touchX.current = e.touches[0].clientX; setPaused(true); };
   const onTouchEnd = (e) => {
     if (touchX.current == null) return;
     const dx = e.changedTouches[0].clientX - touchX.current;
-    if (Math.abs(dx) > 40) interact(dx < 0 ? undefined : (index - 1 + count) % count);
+    if (Math.abs(dx) > 40) interact((index + (dx < 0 ? 1 : -1) + count) % count);
     touchX.current = null;
+    clearTimeout(resumeTimer.current);
+    resumeTimer.current = setTimeout(() => setPaused(false), 8000);
   };
 
   if (count === 0) return null;
-  const go = (d) => interact((index + d + count) % count);
+  const current = slides[index];
 
   return (
     <section
-      className="relative z-10 mx-auto max-w-4xl px-4 pb-10"
+      className="relative left-1/2 w-screen -translate-x-1/2"
       aria-roledescription="carousel"
       aria-label="Promoções"
       onMouseEnter={() => setPaused(true)}
@@ -56,95 +177,37 @@ export default function BannerCarousel({ banners }) {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      <div className="group relative h-72 overflow-hidden rounded-3xl border border-plum-500/25 shadow-2xl shadow-plum-700/30 sm:h-96 md:h-[28rem]">
-        {slides.map((b, i) => {
-          const active = i === index;
-          const pos = b.content_position === 'left'
-            ? 'items-start text-left'
-            : b.content_position === 'right'
-              ? 'items-end text-right'
-              : 'items-center text-center';
-          const desktop = b.desktop_image_url || b.image_url;
-          const mobile = b.mobile_image_url || desktop;
-          const inner = (
-            <>
-              {/* Imagem responsiva: mobile usa sua própria versão quando existir */}
-              <picture>
-                {mobile && mobile !== desktop && <source media="(max-width: 640px)" srcSet={mobile} />}
-                <img
-                  src={desktop}
-                  alt={b.title ?? 'Banner promocional'}
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  decoding="async"
-                  className={`h-full w-full object-cover transition-transform duration-[6000ms] ease-out ${active ? 'scale-105' : 'scale-100'}`}
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
-              </picture>
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0308] via-black/45 to-transparent" />
-              <div className={`absolute inset-0 flex flex-col justify-center px-8 sm:px-14 ${pos}`}>
-                {b.featured && (
-                  <span className="mb-3 rounded-full border border-amber-300/40 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-amber-200 w-fit">
-                    ✦ Destaque
-                  </span>
-                )}
-                {b.title && (
-                  <h2 className="font-serif text-3xl text-gradient drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)] sm:text-4xl md:text-5xl">
-                    {b.title}
-                  </h2>
-                )}
-                {b.subtitle && (
-                  <p className="mt-2 max-w-md text-sm text-white/85 drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)] sm:text-base">
-                    {b.subtitle}
-                  </p>
-                )}
-                {b.button_text && b.button_url && (
-                  <a
-                    href={b.button_url}
-                    target={/^https?:/i.test(b.button_url) ? '_blank' : undefined}
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="mt-5 w-fit rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110"
-                  >
-                    {b.button_text}
-                  </a>
-                )}
-              </div>
-            </>
-          );
-          return (
-            <div
-              key={b.id}
-              aria-hidden={!active}
-              className={`absolute inset-0 transition-opacity duration-700 ease-out ${active ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-            >
-              {inner}
-            </div>
-          );
-        })}
+      {/* Faixa luminosa premium acima do banner */}
+      <div aria-hidden className="h-px w-full bg-gradient-to-r from-transparent via-plum-400/40 to-transparent" />
+
+      <div className={`group relative w-full overflow-hidden ${slideHeight(current?.height_mode)}`}>
+        {slides.map((b, i) => (
+          <BannerSlide key={b.id} banner={b} active={i === index} isFirst={i === 0} />
+        ))}
 
         {count > 1 && (
           <>
             <button
-              onClick={() => go(-1)}
+              onClick={() => interact((index - 1 + count) % count)}
               aria-label="Promoção anterior"
-              className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-xl text-lavender backdrop-blur-md transition hover:bg-plum-600/40 md:opacity-0 md:group-hover:opacity-100"
+              className="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-2xl text-lavender backdrop-blur-md transition hover:bg-plum-600/50 md:opacity-0 md:group-hover:opacity-100"
             >
               ‹
             </button>
             <button
-              onClick={() => go(1)}
+              onClick={() => interact((index + 1) % count)}
               aria-label="Próxima promoção"
-              className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-xl text-lavender backdrop-blur-md transition hover:bg-plum-600/40 md:opacity-0 md:group-hover:opacity-100"
+              className="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-2xl text-lavender backdrop-blur-md transition hover:bg-plum-600/50 md:opacity-0 md:group-hover:opacity-100"
             >
               ›
             </button>
-            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+            <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 gap-2">
               {slides.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => interact(i)}
                   aria-label={`Ir para promoção ${i + 1}`}
-                  className={`h-1.5 rounded-full transition-all ${i === index ? 'w-8 bg-lavender' : 'w-3 bg-white/30 hover:bg-white/50'}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${i === index ? 'w-10 bg-lavender shadow-[0_0_8px_rgba(201,167,232,0.7)]' : 'w-3 bg-white/30 hover:bg-white/60'}`}
                 />
               ))}
             </div>
