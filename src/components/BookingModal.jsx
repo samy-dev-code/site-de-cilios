@@ -92,29 +92,96 @@ class BookingErrorBoundary extends Component {
   }
 }
 
-export default function BookingModal({ services, loading = false, error = null, presetService = null, onClose }) {
+export default function BookingModal({ services, promotions, loading = false, error = null, presetService = null, onClose }) {
   const [step, setStep] = useState(presetService ? 1 : 0);
+  // Seleção: { type: 'service' | 'promotion', data }
   const [service, setService] = useState(presetService);
+  const [promotion, setPromotion] = useState(null);
+  const [tab, setTab] = useState(presetService ? 'service' : 'service');
   const [date, setDate] = useState(null);
   const [time, setTime] = useState(null);
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [notes, setNotes] = useState('');
+  const [participants, setParticipants] = useState([]);
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount_amount }
+  const [couponMsg, setCouponMsg] = useState(null); // { type: 'ok'|'err', text }
+  const [couponChecking, setCouponChecking] = useState(false);
   const [hours, setHours] = useState([]);
   const [blocked, setBlocked] = useState([]);
   const [takenSlots, setTakenSlots] = useState([]);
   const [checking, setChecking] = useState(false);
+  const [payment, setPayment] = useState(null);
+  const [result, setResult] = useState(null); // retorno do RPC create_booking
 
   // Normalização segura: garante que valores vindos do Supabase sejam sempre arrays
   const asArray = (value) => (Array.isArray(value) ? value : []);
-  // A prop `services` também pode chegar como undefined/objeto durante o carregamento
   const serviceList = asArray(services);
-  const [payment, setPayment] = useState(null);
+  const promotionList = asArray(promotions);
   const [pix, setPix] = useState({ pix_key: '', pix_holder_name: '', pix_city: '' });
   const [hoursError, setHoursError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [done, setDone] = useState(false);
+
+  // Duração efetiva: serviço usa a própria; promoção soma os serviços incluídos
+  const selectedDuration = useMemo(() => {
+    if (service) return Number(service.duration_minutes) || 60;
+    if (promotion) {
+      const ids = asArray(promotion.service_ids);
+      if (ids.length) {
+        const total = serviceList
+          .filter((s) => ids.includes(s.id))
+          .reduce((acc, s) => acc + (Number(s.duration_minutes) || 0), 0);
+        if (total > 0) return total;
+      }
+    }
+    return 60;
+  }, [service, promotion, serviceList]);
+
+  // Estimativa de valores (o valor FINAL é sempre recalculado no banco via create_booking)
+  const pricing = useMemo(() => {
+    let original = 0;
+    let promoDiscount = 0;
+    if (service) {
+      original = Number(service.promotional_price ?? service.price) || 0;
+    } else if (promotion) {
+      const ids = asArray(promotion.service_ids);
+      const sum = ids.length
+        ? serviceList
+            .filter((s) => ids.includes(s.id))
+            .reduce((acc, s) => acc + (Number(s.promotional_price ?? s.price) || 0), 0)
+        : 0;
+      original = promotion.price != null ? Number(promotion.price) : sum;
+      const dv = Number(promotion.discount_value) || 0;
+      promoDiscount = promotion.discount_type === 'percentage'
+        ? Math.round(original * dv) / 100
+        : Math.min(dv, original);
+    }
+    const couponDiscount = appliedCoupon ? Number(appliedCoupon.discount_amount) || 0 : 0;
+    const totalDiscount = Math.min(promoDiscount + couponDiscount, original);
+    return { original, promoDiscount, couponDiscount, totalDiscount, final: Math.max(original - totalDiscount, 0) };
+  }, [service, promotion, appliedCoupon, serviceList]);
+
+  // Quando a promoção exige participantes, preparamos a lista de nomes
+  useEffect(() => {
+    const n = promotion ? Number(promotion.participants) || 1 : 1;
+    setParticipants((prev) => {
+      const arr = Array.from({ length: Math.max(n, 1) }, (_, i) => prev[i] || '');
+      return arr;
+    });
+  }, [promotion]);
+
+  // Trocar de seleção limpa cupom aplicado (regras podem diferir por serviço/promoção)
+  const choose = (type, item) => {
+    setService(type === 'service' ? item : null);
+    setPromotion(type === 'promotion' ? item : null);
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponMsg(null);
+    setStep(1);
+  };
 
   // Trava o scroll do fundo enquanto o modal está aberto
   useEffect(() => {
@@ -153,7 +220,6 @@ export default function BookingModal({ services, loading = false, error = null, 
         if (!mounted) return;
         setChecking(false);
         if (error) {
-          // Em caso de falha, liberamos todos os horários em vez de travar o modal
           setTakenSlots([]);
           return;
         }
@@ -174,14 +240,14 @@ export default function BookingModal({ services, loading = false, error = null, 
   };
 
   const slots = useMemo(() => {
-    if (!date || !service) return [];
+    if (!date || (!service && !promotion)) return [];
     const d = new Date(`${date}T12:00:00`);
     const h = hoursFor(d.getDay());
     if (!h) return [];
     const [oh, om] = h.open_time.split(':').map(Number);
     const [ch] = h.close_time.split(':').map(Number);
     const stepMin = 30;
-    const total = service.duration_minutes;
+    const total = selectedDuration;
     const out = [];
     for (let m = oh * 60 + om; m + total <= ch * 60; m += stepMin) {
       const hh = String(Math.floor(m / 60)).padStart(2, '0');
@@ -198,7 +264,7 @@ export default function BookingModal({ services, loading = false, error = null, 
       out.push({ label, conflict });
     }
     return out;
-  }, [date, service, hours, takenSlots]);
+  }, [date, service, promotion, selectedDuration, hours, takenSlots]);
 
   // Calendário do mês (navegação simples)
   const [cursor, setCursor] = useState(() => new Date());
@@ -214,57 +280,104 @@ export default function BookingModal({ services, loading = false, error = null, 
 
   const blockedMap = useMemo(() => Object.fromEntries(asArray(blocked).map((b) => [b.blocked_date, b.reason])), [blocked]);
 
-  const canContinue = [!!service, !!date, !!time && !checking, name.trim().length >= 3 && whatsapp.replace(/\D/g, '').length >= 10, !!payment, true][step];
+  const participantsRequired = promotion ? Math.max(Number(promotion.participants) || 1, 1) : 1;
+  const participantsOk =
+    participantsRequired <= 1 ||
+    participants.slice(0, participantsRequired).every((n) => n.trim().length >= 2);
+
+  const canContinue = [
+    !!service || !!promotion,
+    !!date,
+    !!time && !checking,
+    name.trim().length >= 3 && whatsapp.replace(/\D/g, '').length >= 10 && participantsOk,
+    !!payment,
+    true,
+  ][step];
+
+  // Valida o cupom direto no banco (a tabela coupons não é pública)
+  async function applyCoupon() {
+    const code = couponInput.trim();
+    if (!code || !pricing.original) return;
+    setCouponChecking(true);
+    setCouponMsg(null);
+    try {
+      const { data, error } = await supabase.rpc('validate_coupon', {
+        p_code: code,
+        p_base_amount: Math.max(pricing.original - pricing.promoDiscount, 0),
+        p_client_whatsapp: whatsapp.trim(),
+        p_service_id: service?.id ?? null,
+        p_category_id: service?.category_id ?? null,
+        p_promotion_id: promotion?.id ?? null,
+      });
+      if (error) throw error;
+      if (data?.valid) {
+        setAppliedCoupon({ code: data.code, discount_amount: Number(data.discount_amount) || 0 });
+        setCouponMsg({ type: 'ok', text: 'Cupom aplicado com sucesso! ✦' });
+      } else {
+        setAppliedCoupon(null);
+        setCouponMsg({ type: 'err', text: data?.error || 'Cupom inválido.' });
+      }
+    } catch (e) {
+      setAppliedCoupon(null);
+      setCouponMsg({ type: 'err', text: e.message || 'Não foi possível validar o cupom agora.' });
+    } finally {
+      setCouponChecking(false);
+    }
+  }
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponMsg(null);
+  };
 
   const pixPayload = useMemo(
-    () => (pix.pix_key ? buildPixPayload({ key: pix.pix_key, name: pix.pix_holder_name, city: pix.pix_city, amount: service?.price, txid: 'MARI-LASH' }) : ''),
-    [pix, service]
+    () => (pix.pix_key ? buildPixPayload({ key: pix.pix_key, name: pix.pix_holder_name, city: pix.pix_city, amount: pricing.final || undefined, txid: 'MARI-LASH' }) : ''),
+    [pix, pricing.final]
   );
 
   async function submit() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      // Revalidação final de conflito no banco antes de inserir (por sobreposição de horário)
-      const { data: conflicts } = await supabase
-        .from('appointments')
-        .select('id, appointment_time, services(duration_minutes)')
-        .eq('appointment_date', date)
-        .in('status', ['pending', 'confirmed']);
-      const [sh, sm] = time.split(':').map(Number);
-      const start = sh * 60 + sm;
-      const end = start + service.duration_minutes;
-      const overlap = asArray(conflicts).some((a) => {
-        if (!a || typeof a.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
-        const [ah, am] = a.appointment_time.split(':').map(Number);
-        const aStart = (ah || 0) * 60 + (am || 0);
-        const aDur = Number(a.services?.duration_minutes) || 60;
-        return start < aStart + aDur && aStart < end;
+      // Toda a validação (serviço, promoção, cupom, preços, conflito de horário)
+      // acontece no banco, via RPC create_booking — o frontend nunca dita preços.
+      const { data, error: err } = await supabase.rpc('create_booking', {
+        p_service_id: service?.id ?? null,
+        p_promotion_id: promotion?.id ?? null,
+        p_client_name: name.trim(),
+        p_client_whatsapp: whatsapp.trim(),
+        p_appointment_date: date,
+        p_appointment_time: time,
+        p_payment_method: payment || 'pending',
+        p_notes: notes.trim() || null,
+        p_coupon_code: appliedCoupon ? appliedCoupon.code : null,
+        p_participants: participantsRequired > 1
+          ? participants.slice(0, participantsRequired).map((n) => ({ name: n.trim() }))
+          : null,
       });
-      if (overlap) {
-        setSubmitError('Ops! Este horário acabou de ser preenchido por outra pessoa. Escolha outro, por favor.');
+      if (err) throw err;
+      if (!data?.ok) {
+        setSubmitError(data?.error || 'Não foi possível concluir o agendamento.');
         setSubmitting(false);
         return;
       }
-      const { error: err } = await supabase.from('appointments').insert({
-        service_id: service.id,
-        client_name: name.trim(),
-        client_whatsapp: whatsapp.trim(),
-        appointment_date: date,
-        appointment_time: time,
-        payment_method: payment || 'pending',
-        notes: notes.trim() || null,
-      });
-      if (err) throw err;
+      setResult(data);
+      const dateLabel = `${WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, ${fmtBR(date)}`;
       openWhatsApp(buildBookingMessage({
-        service: service.name,
-        date: `${WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, ${fmtBR(date)}`,
+        service: service?.name || promotion?.name,
+        date: dateLabel,
         time,
         name: name.trim(),
         whatsapp: whatsapp.trim(),
         notes: notes.trim(),
         paymentLabel: PAYMENT_LABELS[payment] || 'A combinar',
-        amount: service.price,
+        amount: data.final_amount,
+        promotion: promotion?.name || null,
+        participants: participantsRequired > 1 ? participants.slice(0, participantsRequired).map((n) => n.trim()) : null,
+        couponCode: data.coupon_discount > 0 ? (couponInput.trim().toUpperCase()) : null,
+        totalDiscount: data.total_discount > 0 ? data.total_discount : null,
+        originalAmount: data.original_amount,
       }), pix.whatsapp_number);
       setDone(true);
     } catch (e) {
@@ -275,311 +388,418 @@ export default function BookingModal({ services, loading = false, error = null, 
   }
 
   function reset() {
-    setStep(0); setService(null); setDate(null); setTime(null);
-    setName(''); setWhatsapp(''); setNotes(''); setPayment(null); setDone(false); setSubmitError(null);
+    setStep(0); setService(null); setPromotion(null); setDate(null); setTime(null);
+    setName(''); setWhatsapp(''); setNotes(''); setParticipants([]);
+    setCouponInput(''); setAppliedCoupon(null); setCouponMsg(null);
+    setPayment(null); setResult(null); setDone(false); setSubmitError(null);
   }
 
+  const selectedLabel = service?.name || promotion?.name || '';
+  const isPromo = !!promotion;
+
   return (
-    <BookingErrorBoundary onClose={onClose}>
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#0a0308]/85 p-0 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-3 sm:p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Agendar horário"
+    >
       <div
-        className="glass rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 sm:p-8 animate-fade-up"
+        className="glass max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl p-6 sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
-        {loading ? (
-          <div className="py-20 text-center">
-            <Spinner />
-            <p className="mt-4 text-sm text-plum-200/70">Preparando seu agendamento… ✦</p>
-          </div>
-        ) : error ? (
-          <div className="py-12 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-red-400/40 bg-red-500/10 text-2xl">😔</div>
-            <h3 className="mt-5 font-serif text-2xl text-gradient">Não foi possível carregar</h3>
-            <p className="mt-3 text-sm text-plum-200/80">Verifique sua conexão e tente novamente.</p>
-            <div className="mt-6 flex justify-center gap-3">
-              <button onClick={onClose} className="rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">Fechar</button>
-              <button onClick={() => window.location.reload()} className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2 text-sm text-white hover:brightness-110 transition">Tentar de novo</button>
-            </div>
-          </div>
-        ) : done ? (
-          <div className="text-center py-8">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-plum-500 to-lavender shadow-xl shadow-plum-600/40">
-              <svg viewBox="0 0 24 24" className="h-8 w-8 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-            </div>
-            <h3 className="mt-6 font-serif text-3xl text-gradient">Agendamento recebido!</h3>
-            <p className="mt-3 text-plum-200/85 text-sm leading-relaxed">
-              Recebemos seu pedido, <strong className="text-lavender-soft">{name.split(' ')[0]}</strong>! 💜
-              <br />A Mari vai confirmar seu horário pelo WhatsApp em breve.
+        {done ? (
+          <div className="py-6 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-plum-400/40 bg-plum-500/10 text-3xl">💜</div>
+            <h2 className="mt-5 font-serif text-3xl text-gradient">Agendamento confirmado!</h2>
+            <p className="mt-3 text-sm text-plum-200/80">
+              Sua solicitação de <strong className="text-plum-200">{selectedLabel}</strong> foi registrada
+              {date && <> para <strong className="text-plum-200">{fmtBR(date)} às {time}</strong></>}.
+              {pricing.final > 0 && <> Valor final: <strong className="text-plum-200">{brl(pricing.final)}</strong>.</>}
             </p>
-            <div className="mt-6 glass rounded-2xl p-5 text-left text-sm text-plum-200/90 space-y-1.5">
-              <p><span className="text-lavender/70">Serviço:</span> {service.name}</p>
-              <p><span className="text-lavender/70">Data:</span> {fmtBR(date)}</p>
-              <p><span className="text-lavender/70">Horário:</span> {time}</p>
-              <p><span className="text-lavender/70">Valor:</span> {brl(service.price)}</p>
-              <p><span className="text-lavender/70">Pagamento:</span> {PAYMENT_LABELS[payment] || 'A combinar'}</p>
+            <p className="mt-2 text-xs text-plum-200/60">Uma janela do WhatsApp foi aberta para você enviar a confirmação. Se não abriu, verifique o bloqueador de pop-ups.</p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button onClick={reset} className="btn-lux rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-6 py-3 text-sm font-medium text-white">
+                Novo agendamento
+              </button>
+              <button onClick={onClose} className="rounded-full border border-plum-500/30 px-6 py-3 text-sm text-plum-200 transition hover:bg-plum-800/40">
+                Fechar
+              </button>
             </div>
-            <button onClick={reset} className="mt-6 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">Fazer outro agendamento</button>
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-serif text-2xl text-gradient">Agendar horário</h3>
-              <button onClick={onClose} aria-label="Fechar" className="text-plum-300/70 hover:text-lavender transition text-2xl leading-none">×</button>
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-serif text-3xl text-gradient">Agendar horário</h2>
+                <p className="mt-1 text-sm text-plum-200/70">
+                  {STEPS[step]} · passo {step + 1} de {STEPS.length}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                aria-label="Fechar agendamento"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-plum-500/25 text-plum-200 transition hover:border-plum-400/60 hover:bg-plum-800/40"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
             </div>
             <Stepper step={step} />
-            <p className="mb-6 text-center text-xs uppercase tracking-[0.3em] text-lavender/70">{STEPS[step]}</p>
 
-            {submitError && (
-              <div className="mb-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{submitError}</div>
-            )}
-
-            {/* Passo 0 — Serviço */}
-            {step === 0 && (
-              <div className="space-y-3">
-                {serviceList.length === 0 && <p className="text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento.</p>}
-                {serviceList.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => { setService(s); setStep(1); }}
-                    className={`w-full rounded-2xl border px-5 py-4 text-left transition ${service?.id === s.id ? 'border-lavender bg-lavender/10' : 'border-white/10 hover:border-lavender/50 hover:bg-white/5'}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-serif text-lg text-lavender-soft">{s.name}</span>
-                      <span className="text-gradient font-medium">{brl(s.price)}</span>
+            {error && !loading ? (
+              <div className="glass rounded-2xl p-8 text-center">
+                <p className="text-sm text-red-200">Não conseguimos carregar os serviços agora.</p>
+                <button onClick={() => window.location.reload()} className="mt-4 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender transition hover:bg-lavender/10">Tentar novamente</button>
+              </div>
+            ) : loading ? (
+              <div className="flex justify-center py-14"><Spinner /></div>
+            ) : (
+              <>
+                {/* PASSO 0 — Serviço OU promoção */}
+                {step === 0 && (
+                  <div>
+                    <div className="mb-4 flex gap-2">
+                      {['service', 'promotion'].map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setTab(t)}
+                          className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.15em] transition ${tab === t ? 'bg-gradient-to-r from-plum-600 to-lavender text-white' : 'border border-plum-500/25 text-plum-200/80 hover:border-plum-400/50'}`}
+                        >
+                          {t === 'service' ? 'Serviços' : 'Promoções'}
+                        </button>
+                      ))}
                     </div>
-                    <p className="mt-1 text-xs text-plum-200/70">{s.duration_minutes} min · {s.description?.slice(0, 70)}{s.description?.length > 70 ? '…' : ''}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Passo 1 — Data */}
-            {step === 1 && (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="rounded-full border border-white/10 px-3 py-1 text-lavender hover:bg-white/5 transition">←</button>
-                  <span className="font-serif text-lg text-lavender-soft">{MONTHS[cursor.getMonth()]} {cursor.getFullYear()}</span>
-                  <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="rounded-full border border-white/10 px-3 py-1 text-lavender hover:bg-white/5 transition">→</button>
-                </div>
-                <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-plum-300/60 mb-2">
-                  {WEEKDAYS.map((w) => <span key={w}>{w.slice(0, 3)}</span>)}
-                </div>
-                {hoursError && (
-                  <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                    <span>Não conseguimos carregar os horários de atendimento.</span>
-                    <button onClick={loadHours} className="shrink-0 rounded-full border border-red-300/40 px-3 py-1 text-xs hover:bg-red-400/10 transition">Tentar novamente</button>
-                  </div>
-                )}
-                <div className="grid grid-cols-7 gap-1">
-                  {days.map((iso, i) => {
-                    if (!iso) return <span key={`e${i}`} />;
-                    const d = new Date(`${iso}T12:00:00`);
-                    const past = iso < today;
-                    const closed = iso >= today && !hoursFor(d.getDay());
-                    const bl = blockedMap[iso];
-                    const disabled = past || (iso >= today && (closed || !!bl));
-                    return (
-                      <button
-                        key={iso}
-                        disabled={disabled}
-                        title={bl || (closed ? 'Fechado' : '')}
-                        onClick={() => { setDate(iso); setTime(null); setStep(2); }}
-                        className={`aspect-square rounded-lg text-sm transition ${date === iso ? 'bg-gradient-to-br from-plum-500 to-lavender text-white font-semibold' : disabled ? 'text-plum-300/25' : 'text-plum-100 hover:bg-lavender/15'}`}
-                      >
-                        {d.getDate()}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 flex justify-between gap-3">
-                  <button onClick={() => setStep(0)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button>
-                </div>
-              </div>
-            )}
-
-            {/* Passo 2 — Horário */}
-            {step === 2 && (
-              <div>
-                <p className="text-sm text-plum-200/80 mb-4">{service.name} · {fmtBR(date)} · {service.duration_minutes} min</p>
-                {checking ? (
-                  <div className="py-10 text-center"><Spinner /><p className="mt-3 text-sm text-plum-200/70">Verificando disponibilidade…</p></div>
-                ) : slots.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-plum-200/70">Sem horários disponíveis neste dia. Escolha outra data. 💜</p>
-                ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {slots.map((s) => (
-                      <button
-                        key={s.label}
-                        disabled={s.conflict}
-                        onClick={() => { setTime(s.label); setStep(3); }}
-                        className={`rounded-xl border px-2 py-2.5 text-sm transition ${time === s.label ? 'border-lavender bg-lavender/15 text-white' : s.conflict ? 'border-white/5 text-plum-300/25 line-through cursor-not-allowed' : 'border-white/10 text-plum-100 hover:border-lavender/60 hover:bg-white/5'}`}
-                      >
-                        {s.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-4"><button onClick={() => setStep(1)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button></div>
-              </div>
-            )}
-
-            {/* Passo 3 — Dados da cliente */}
-            {step === 3 && (
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="bk-name" className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Nome completo *</label>
-                  <input
-                    id="bk-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Seu nome"
-                    autoComplete="name"
-                    aria-invalid={name.length > 0 && name.trim().length < 3}
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 focus:ring-1 focus:ring-lavender/40 transition"
-                  />
-                  {name.length > 0 && name.trim().length < 3 && <p className="mt-1 text-xs text-red-300/80">Digite seu nome completo.</p>}
-                </div>
-                <div>
-                  <label htmlFor="bk-zap" className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">WhatsApp *</label>
-                  <input
-                    id="bk-zap"
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="(11) 99999-9999"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    aria-invalid={whatsapp.length > 0 && whatsapp.replace(/\D/g, '').length < 10}
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 focus:ring-1 focus:ring-lavender/40 transition"
-                  />
-                  {whatsapp.length > 0 && whatsapp.replace(/\D/g, '').length < 10 && <p className="mt-1 text-xs text-red-300/80">Informe um WhatsApp válido com DDD.</p>}
-                </div>
-                <div>
-                  <label htmlFor="bk-notes" className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Observações (opcional)</label>
-                  <textarea
-                    id="bk-notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    placeholder="Alguma alergia, preferência ou detalhe que a Mari deva saber?"
-                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 focus:ring-1 focus:ring-lavender/40 transition"
-                  />
-                </div>
-                <div className="flex justify-between items-center pt-2">
-                  <button onClick={() => setStep(2)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button>
-                  <button
-                    onClick={() => setStep(4)}
-                    disabled={!canContinue}
-                    className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-50"
-                  >
-                    Ir para pagamento
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Passo 4 — Pagamento */}
-            {step === 4 && (
-              <div>
-                <div className="space-y-3">
-                  {PAYMENTS.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setPayment(p.id)}
-                      className={`w-full rounded-2xl border px-5 py-4 text-left flex items-start gap-3 transition ${payment === p.id ? 'border-lavender bg-lavender/10' : 'border-white/10 hover:border-lavender/50 hover:bg-white/5'}`}
-                    >
-                      <span className={`mt-0.5 text-lavender ${payment === p.id ? 'text-lavender-soft' : 'text-lavender/60'}`}>{p.icon}</span>
-                      <span>
-                        <span className="block font-serif text-lg text-lavender-soft">{p.label}</span>
-                        <span className="block text-xs text-plum-200/70">{p.desc}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {payment === 'pix' && pix.pix_key && (
-                  <div className="mt-5 glass rounded-2xl p-5 text-center">
-                    <p className="mb-3 text-xs uppercase tracking-widest text-lavender/70">Escaneie para pagar {brl(service.price)}</p>
-                    <div className="mx-auto inline-block rounded-xl bg-white p-3">
-                      <QRCodeSVG value={pixPayload} size={168} level="M" />
+                    <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                      {tab === 'service' ? (
+                        serviceList.length === 0 ? (
+                          <p className="py-8 text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento. 💜</p>
+                        ) : serviceList.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => choose('service', s)}
+                            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-plum-500/20 bg-plum-900/30 px-4 py-3 text-left transition hover:border-lavender/50 hover:bg-plum-800/40"
+                          >
+                            <span>
+                              <span className="block text-sm font-medium text-plum-100">{s.name}</span>
+                              <span className="block text-xs text-plum-200/60">{s.duration_minutes || 60} min</span>
+                            </span>
+                            <span className="text-sm text-lavender">{brl(s.promotional_price ?? s.price)}</span>
+                          </button>
+                        ))
+                      ) : promotionList.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-plum-200/70">Nenhuma promoção ativa no momento. 💜</p>
+                      ) : promotionList.map((p) => {
+                        const ids = asArray(p.service_ids);
+                        const base = p.price != null
+                          ? Number(p.price)
+                          : serviceList.filter((s) => ids.includes(s.id)).reduce((a, s) => a + (Number(s.promotional_price ?? s.price) || 0), 0);
+                        const disc = p.discount_type === 'percentage'
+                          ? Math.round(base * (Number(p.discount_value) || 0)) / 100
+                          : Math.min(Number(p.discount_value) || 0, base);
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => choose('promotion', p)}
+                            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-plum-500/20 bg-plum-900/30 px-4 py-3 text-left transition hover:border-lavender/50 hover:bg-plum-800/40"
+                          >
+                            <span>
+                              <span className="block text-sm font-medium text-plum-100">{p.name}</span>
+                              <span className="block text-xs text-plum-200/60">
+                                {p.participants > 1 ? `${p.participants} pessoas · ` : ''}{ids.length || 0} serviço(s)
+                              </span>
+                            </span>
+                            <span className="text-right">
+                              {disc > 0 && <span className="block text-xs text-plum-200/50 line-through">{brl(base)}</span>}
+                              <span className="text-sm text-lavender">{brl(Math.max(base - disc, 0))}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <p className="mt-3 break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[11px] text-plum-200/80">{pixPayload}</p>
-                    <button
-                      onClick={() => navigator.clipboard?.writeText(pixPayload)}
-                      className="mt-2 rounded-full border border-lavender/40 px-4 py-1.5 text-xs text-lavender hover:bg-lavender/10 transition"
-                    >
-                      Copiar código PIX
-                    </button>
-                    <p className="mt-3 text-xs text-plum-200/60">Após pagar, toque em "Finalizar" — a confirmação final é feita pelo WhatsApp. 💜</p>
                   </div>
                 )}
-                {payment === 'cash' && (
-                  <p className="mt-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-4 text-sm text-plum-200/80">
-                    💵 O pagamento em <strong className="text-lavender-soft">dinheiro</strong> é feito presencialmente no estúdio, no dia do atendimento. Traga o valor exato de {brl(service.price)} se possível.
-                  </p>
+
+                {/* PASSO 1 — Data */}
+                {step === 1 && (
+                  <div>
+                    <p className="mb-1 text-sm text-plum-200/80">Escolhido: <strong className="text-lavender">{selectedLabel}</strong></p>
+                    <p className="mb-4 text-xs text-plum-200/60">Duração estimada: {selectedDuration} min</p>
+                    <div className="mb-3 flex items-center justify-between">
+                      <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} aria-label="Mês anterior" className="flex h-9 w-9 items-center justify-center rounded-full border border-plum-500/25 text-plum-200 transition hover:bg-plum-800/40">‹</button>
+                      <p className="font-serif text-lg text-plum-100">{MONTHS[cursor.getMonth()]} {cursor.getFullYear()}</p>
+                      <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} aria-label="Próximo mês" className="flex h-9 w-9 items-center justify-center rounded-full border border-plum-500/25 text-plum-200 transition hover:bg-plum-800/40">›</button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wider text-plum-200/50">
+                      {WEEKDAYS.map((d) => <span key={d}>{d.slice(0, 3)}</span>)}
+                    </div>
+                    <div className="mt-1 grid grid-cols-7 gap-1">
+                      {days.map((iso, i) => {
+                        if (!iso) return <span key={`e${i}`} />;
+                        const disabled = iso < today || !!blockedMap[iso];
+                        const open = hoursFor(new Date(`${iso}T12:00:00`).getDay());
+                        return (
+                          <button
+                            key={iso}
+                            disabled={disabled || !open}
+                            title={blockedMap[iso] || (!open ? 'Fechado' : undefined)}
+                            onClick={() => { setDate(iso); setTime(null); setStep(2); }}
+                            className={`aspect-square rounded-lg text-sm transition ${
+                              date === iso
+                                ? 'bg-gradient-to-r from-plum-600 to-lavender text-white'
+                                : disabled || !open
+                                  ? 'text-plum-200/25'
+                                  : 'text-plum-100 hover:bg-plum-800/50'
+                            }`}
+                          >
+                            {Number(iso.slice(-2))}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
-                {payment === 'card' && (
-                  <p className="mt-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-4 text-sm text-plum-200/80">
-                    💳 O pagamento no <strong className="text-lavender-soft">cartão (débito ou crédito)</strong> é processado na maquininha presencialmente no estúdio, no dia do atendimento.
-                  </p>
+
+                {/* PASSO 2 — Horário */}
+                {step === 2 && (
+                  <div>
+                    <p className="mb-4 text-sm text-plum-200/80">
+                      <strong className="text-lavender">{selectedLabel}</strong> · {date && fmtBR(date)}
+                    </p>
+                    {hoursError && (
+                      <p className="mb-3 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-xs text-red-200">
+                        Não conseguimos carregar os horários de funcionamento. Tente novamente mais tarde.
+                      </p>
+                    )}
+                    {checking ? (
+                      <div className="flex justify-center py-8"><Spinner /></div>
+                    ) : slots.length === 0 ? (
+                      <p className="glass rounded-2xl p-6 text-center text-sm text-plum-200/70">Sem horários livres neste dia. Escolha outra data. 💜</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                        {slots.map((s) => (
+                          <button
+                            key={s.label}
+                            disabled={s.conflict}
+                            onClick={() => { setTime(s.label); setStep(3); }}
+                            className={`rounded-xl border px-2 py-2.5 text-sm transition ${
+                              s.conflict
+                                ? 'cursor-not-allowed border-white/5 text-plum-200/30 line-through'
+                                : time === s.label
+                                  ? 'border-transparent bg-gradient-to-r from-plum-600 to-lavender text-white'
+                                  : 'border-plum-500/25 text-plum-100 hover:border-lavender/50 hover:bg-plum-800/40'
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
 
-                <div className="mt-5 flex justify-between items-center">
-                  <button onClick={() => setStep(3)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button>
-                  <button
-                    onClick={() => setStep(5)}
-                    disabled={!payment}
-                    className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-50"
-                  >
-                    Continuar
-                  </button>
-                </div>
-              </div>
-            )}
+                {/* PASSO 3 — Dados + participantes + cupom */}
+                {step === 3 && (
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="bk-name" className="mb-1 block text-xs uppercase tracking-wider text-plum-200/70">Nome completo *</label>
+                      <input id="bk-name" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl border border-plum-500/25 bg-plum-900/40 px-4 py-3 text-sm text-plum-100 outline-none transition focus:border-lavender/60" placeholder="Seu nome" />
+                    </div>
+                    <div>
+                      <label htmlFor="bk-wa" className="mb-1 block text-xs uppercase tracking-wider text-plum-200/70">WhatsApp *</label>
+                      <input id="bk-wa" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="w-full rounded-xl border border-plum-500/25 bg-plum-900/40 px-4 py-3 text-sm text-plum-100 outline-none transition focus:border-lavender/60" placeholder="(14) 99999-9999" />
+                    </div>
 
-            {/* Passo 5 — Confirmação */}
-            {step === 5 && (
-              <div>
-                <div className="glass rounded-2xl p-5 text-sm text-plum-200/90 space-y-2">
-                  <p><span className="text-lavender/70">Serviço:</span> {service.name} ({service.duration_minutes} min)</p>
-                  <p><span className="text-lavender/70">Data:</span> {WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, {fmtBR(date)}</p>
-                  <p><span className="text-lavender/70">Horário:</span> {time}</p>
-                  <p><span className="text-lavender/70">Nome:</span> {name}</p>
-                  <p><span className="text-lavender/70">WhatsApp:</span> {whatsapp}</p>
-                  {notes && <p><span className="text-lavender/70">Observações:</span> {notes}</p>}
-                  <div className="divider-fade my-2" />
-                  <p><span className="text-lavender/70">Pagamento:</span> {PAYMENT_LABELS[payment] || 'A combinar'}</p>
-                  <p className="text-gradient font-serif text-xl">{brl(service.price)}</p>
-                </div>
-                <div className="mt-5 flex justify-between items-center">
-                  <button onClick={() => setStep(4)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button>
-                  <button
-                    onClick={submit}
-                    disabled={submitting}
-                    className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-60"
-                  >
-                    {submitting ? (<span className="flex items-center gap-2"><Spinner /> Confirmando…</span>) : 'Confirmar agendamento ✦'}
-                  </button>
-                </div>
-              </div>
-            )}
+                    {participantsRequired > 1 && (
+                      <div className="rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4">
+                        <p className="mb-3 text-xs uppercase tracking-wider text-lavender">
+                          👥 Promoção para {participantsRequired} participantes
+                        </p>
+                        <div className="space-y-2">
+                          {participants.slice(0, participantsRequired).map((p, i) => (
+                            <div key={i}>
+                              <label htmlFor={`bk-part-${i}`} className="mb-1 block text-xs text-plum-200/70">Participante {i + 1}</label>
+                              <input
+                                id={`bk-part-${i}`}
+                                value={p}
+                                onChange={(e) => setParticipants((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                                className="w-full rounded-xl border border-plum-500/25 bg-plum-900/40 px-3 py-2.5 text-sm text-plum-100 outline-none transition focus:border-lavender/60"
+                                placeholder="Nome completo"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        {!participantsOk && <p className="mt-2 text-xs text-amber-300/90">Preencha o nome de todas as {participantsRequired} participantes para continuar.</p>}
+                      </div>
+                    )}
 
-            {/* Navegação inferior para os passos 0–2 */}
-            {step === 0 && canContinue === false && (
-              <p className="mt-4 text-center text-xs text-plum-300/50">Toque em um serviço para começar ✦</p>
-            )}
-            {(step === 1 || step === 2) && date && (
-              <button
-                onClick={() => setStep(step + 1)}
-                disabled={!canContinue}
-                className="mt-6 w-full rounded-full bg-gradient-to-r from-plum-600 to-plum-400 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-50"
-              >
-                Continuar
-              </button>
+                    <div>
+                      <label htmlFor="bk-notes" className="mb-1 block text-xs uppercase tracking-wider text-plum-200/70">Observações (opcional)</label>
+                      <textarea id="bk-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full resize-none rounded-xl border border-plum-500/25 bg-plum-900/40 px-4 py-3 text-sm text-plum-100 outline-none transition focus:border-lavender/60" placeholder="Alguma preferência ou informação importante?" />
+                    </div>
+
+                    {/* Cupom de desconto */}
+                    <div className="rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4">
+                      <label htmlFor="bk-coupon" className="mb-1 block text-xs uppercase tracking-wider text-plum-200/70">Possui um cupom de desconto?</label>
+                      {appliedCoupon ? (
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5">
+                          <span className="text-sm text-emerald-200">
+                            Cupom <strong className="tracking-wider">{appliedCoupon.code}</strong> aplicado · −{brl(appliedCoupon.discount_amount)}
+                          </span>
+                          <button onClick={removeCoupon} className="text-xs text-plum-200/70 underline transition hover:text-plum-100">Remover</button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            id="bk-coupon"
+                            value={couponInput}
+                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                            onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
+                            className="min-w-0 flex-1 rounded-xl border border-plum-500/25 bg-plum-900/40 px-3 py-2.5 text-sm uppercase tracking-wider text-plum-100 outline-none transition focus:border-lavender/60"
+                            placeholder="Digite seu cupom"
+                          />
+                          <button
+                            onClick={applyCoupon}
+                            disabled={couponChecking || !couponInput.trim()}
+                            className="shrink-0 rounded-xl bg-gradient-to-r from-plum-700 to-plum-500 px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-white transition hover:brightness-110 disabled:opacity-40"
+                          >
+                            {couponChecking ? <Spinner /> : 'Aplicar cupom'}
+                          </button>
+                        </div>
+                      )}
+                      {couponMsg && (
+                        <p className={`mt-2 text-xs ${couponMsg.type === 'ok' ? 'text-emerald-300' : 'text-red-300'}`}>{couponMsg.text}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* PASSO 4 — Pagamento */}
+                {step === 4 && (
+                  <div>
+                    <div className="mb-4 rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4 text-sm">
+                      <p className="text-plum-200/80">{selectedLabel}{date && ` · ${fmtBR(date)} às ${time}`}</p>
+                      {pricing.totalDiscount > 0 && (
+                        <p className="mt-1 text-xs text-plum-200/60">
+                          {pricing.original > 0 && <span className="line-through">{brl(pricing.original)}</span>}{' '}
+                          desconto de −{brl(pricing.totalDiscount)} · <strong className="text-lavender">{brl(pricing.final)}</strong>
+                        </p>
+                      )}
+                      {pricing.totalDiscount === 0 && <p className="mt-1 text-lavender">{brl(pricing.final)}</p>}
+                    </div>
+                    {payment === 'pix' && pricing.final > 0 && pixPayload ? (
+                      <div className="mb-4 flex flex-col items-center gap-3 rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4">
+                        <QRCodeSVG value={pixPayload} size={168} bgColor="#0d0512" fgColor="#e9d5ff" />
+                        <p className="text-center text-xs text-plum-200/70">Escaneie com o app do seu banco — valor de {brl(pricing.final)}</p>
+                      </div>
+                    ) : payment === 'pix' && pricing.final === 0 ? (
+                      <p className="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-center text-xs text-emerald-200">Sem valor a pagar — os descontos cobrem o total. 🎉</p>
+                    ) : payment === 'pix' && !pix.pix_key ? (
+                      <p className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200">A chave PIX ainda não foi configurada. Escolha outra forma de pagamento ou combine diretamente pelo WhatsApp.</p>
+                    ) : null}
+                    <div className="space-y-2">
+                      {PAYMENTS.map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => setPayment(m.id)}
+                          className={`flex w-full items-center gap-4 rounded-2xl border px-4 py-3.5 text-left transition ${
+                            payment === m.id ? 'border-lavender/70 bg-lavender/10' : 'border-plum-500/25 bg-plum-900/30 hover:border-lavender/40'
+                          }`}
+                        >
+                          <span className="text-lavender">{m.icon}</span>
+                          <span>
+                            <span className="block text-sm font-medium text-plum-100">{m.label}</span>
+                            <span className="block text-xs text-plum-200/60">{m.desc}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* PASSO 5 — Resumo e confirmação */}
+                {step === 5 && (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4 text-sm">
+                      {isPromo && (
+                        <p className="mb-1 text-plum-200/80">🎉 Promoção: <strong className="text-lavender">{promotion.name}</strong></p>
+                      )}
+                      <p className="text-plum-200/80">
+                        {isPromo ? 'Inclui' : 'Serviço'}: <strong className="text-plum-100">{selectedLabel}</strong>
+                      </p>
+                      {isPromo && asArray(promotion.service_ids).length > 0 && (
+                        <p className="mt-0.5 text-xs text-plum-200/60">
+                          {serviceList.filter((s) => asArray(promotion.service_ids).includes(s.id)).map((s) => s.name).join(' + ')}
+                        </p>
+                      )}
+                      {participantsRequired > 1 && (
+                        <p className="mt-1 text-xs text-plum-200/60">Participantes: {participants.slice(0, participantsRequired).map((n) => n.trim()).join(', ')}</p>
+                      )}
+                      {date && <p className="mt-1 text-plum-200/80">📅 {WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, {fmtBR(date)} às {time}</p>}
+                      <p className="mt-1 text-plum-200/80">👩 {name.trim()} · 📱 {whatsapp.trim()}</p>
+                      <p className="mt-1 text-plum-200/80">💳 {PAYMENT_LABELS[payment] || 'A combinar'}</p>
+                      {notes.trim() && <p className="mt-1 text-xs text-plum-200/60">📝 {notes.trim()}</p>}
+                    </div>
+
+                    {/* Resumo de valores — só mostra linhas de desconto quando existem */}
+                    <div className="rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4 text-sm">
+                      <div className="flex justify-between text-plum-200/80"><span>{isPromo ? 'Valor da promoção' : 'Serviço'}</span><span>{brl(pricing.original)}</span></div>
+                      {pricing.promoDiscount > 0 && (
+                        <div className="flex justify-between text-emerald-300"><span>Promoção</span><span>−{brl(pricing.promoDiscount)}</span></div>
+                      )}
+                      {pricing.couponDiscount > 0 && (
+                        <div className="flex justify-between text-emerald-300"><span>Cupom {appliedCoupon?.code}</span><span>−{brl(pricing.couponDiscount)}</span></div>
+                      )}
+                      {pricing.totalDiscount > 0 && (
+                        <div className="mt-1 flex justify-between border-t border-plum-500/20 pt-1 text-emerald-300"><span>Desconto total</span><span>−{brl(pricing.totalDiscount)}</span></div>
+                      )}
+                      <div className="mt-2 flex justify-between border-t border-plum-500/20 pt-2 text-base font-medium text-plum-100"><span>Valor final</span><span className="text-lavender">{brl(pricing.final)}</span></div>
+                    </div>
+
+                    {submitError && (
+                      <p className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-xs text-red-200">{submitError}</p>
+                    )}
+                    <p className="text-center text-xs text-plum-200/50">
+                      Ao confirmar, abriremos o WhatsApp com o resumo do seu agendamento.
+                    </p>
+                  </div>
+                )}
+
+                {/* Navegação entre passos */}
+                <div className="mt-8 flex items-center justify-between gap-3">
+                  <button
+                    onClick={() => setStep((s) => Math.max(s - 1, 0))}
+                    disabled={step === 0 || submitting}
+                    className="rounded-full border border-plum-500/30 px-5 py-2.5 text-sm text-plum-200 transition hover:bg-plum-800/40 disabled:opacity-30"
+                  >
+                    Voltar
+                  </button>
+                  {step < 5 ? (
+                    <button
+                      onClick={() => setStep((s) => s + 1)}
+                      disabled={!canContinue}
+                      className="btn-lux rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-8 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/30 transition hover:brightness-110 disabled:opacity-40"
+                    >
+                      {step === 4 ? 'Revisar resumo' : 'Continuar'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={submit}
+                      disabled={submitting}
+                      className="btn-lux rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-8 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/30 transition hover:brightness-110 disabled:opacity-40"
+                    >
+                      {submitting ? 'Confirmando…' : 'Confirmar agendamento ✦'}
+                    </button>
+                  )}
+                </div>
+              </>
             )}
           </>
         )}
       </div>
     </div>
-    </BookingErrorBoundary>
   );
 }
+
+// O modal é exportado já envolvido: qualquer falha interna vira mensagem amigável
+export { BookingErrorBoundary };

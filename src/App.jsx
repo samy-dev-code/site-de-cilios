@@ -8,7 +8,7 @@ import BannerCarousel from './components/BannerCarousel';
 import ServiceCard from './components/ServiceCard';
 import TestimonialCard from './components/TestimonialCard';
 import Gallery from './components/Gallery';
-import BookingModal from './components/BookingModal';
+import BookingModal, { BookingErrorBoundary } from './components/BookingModal';
 import { Reveal } from './components/Reveal';
 import { useSettings, instagramUrl } from './hooks/useSettings';
 import { InstagramIcon } from './components/icons';
@@ -170,6 +170,10 @@ function SiteHome() {
     order: { col: 'display_order' },
   });
   const categories = useFetch('categories', { filters: [['active', 'eq', true]], order: { col: 'display_order' } });
+  const promotions = useFetch('promotions', {
+    filters: [['active', 'eq', true], ['archived', 'eq', false]],
+    order: { col: 'display_order' },
+  });
   const testimonials = useFetch('testimonials', { filters: [['approved', 'eq', true]], order: { col: 'sort_order' } });
   const { settings } = useSettings();
   const instagram = settings.instagram;
@@ -366,13 +370,16 @@ function SiteHome() {
       <SiteFooter />
 
       {scheduleOpen && (
-        <BookingModal
-          services={services.data}
-          loading={services.loading}
-          error={services.error}
-          presetService={presetService}
-          onClose={() => { setScheduleOpen(false); setPresetService(null); }}
-        />
+        <BookingErrorBoundary onClose={() => { setScheduleOpen(false); setPresetService(null); }}>
+          <BookingModal
+            services={services.data}
+            promotions={promotions.data}
+            loading={services.loading || promotions.loading}
+            error={services.error || promotions.error}
+            presetService={presetService}
+            onClose={() => { setScheduleOpen(false); setPresetService(null); }}
+          />
+        </BookingErrorBoundary>
       )}
     </div>
   );

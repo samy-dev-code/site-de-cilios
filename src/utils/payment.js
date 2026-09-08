@@ -38,20 +38,36 @@ export function buildPixPayload({ key, name, city, amount, txid = 'MARI-LASH' })
 
 export const WHATSAPP_COMMERCIAL = '5514998792169';
 
-export function buildBookingMessage({ service, date, time, name, whatsapp, notes, paymentLabel, amount }) {
-  const brl = `R$ ${Number(amount).toFixed(2).replace('.', ',')}`;
+export function buildBookingMessage({
+  service, date, time, name, whatsapp, notes, paymentLabel, amount,
+  promotion = null, participants = null, couponCode = null, totalDiscount = null, originalAmount = null,
+}) {
+  const brl = (v) => `R$ ${Number(v).toFixed(2).replace('.', ',')}`;
   const lines = [
     '✨ *Mari Lash Designer* — Novo agendamento ✨',
     '',
+  ];
+  if (promotion) {
+    lines.push(`🎉 *Promoção:* ${promotion}`);
+    if (participants?.length) lines.push(`👥 *Participantes:* ${participants.join(', ')}`);
+  }
+  lines.push(
     `💜 *Serviço:* ${service}`,
     `📅 *Data:* ${date}`,
     `⏰ *Horário:* ${time}`,
-    `💰 *Valor:* ${brl}`,
+  );
+  if (totalDiscount != null && Number(totalDiscount) > 0 && originalAmount != null) {
+    lines.push(`💰 *Valor:* ~~${brl(originalAmount)}~~ *${brl(amount)}* (−${brl(totalDiscount)})`);
+    if (couponCode) lines.push(`🎟️ *Cupom:* ${couponCode}`);
+  } else {
+    lines.push(`💰 *Valor:* ${brl(amount)}`);
+  }
+  lines.push(
     `💳 *Forma de pagamento:* ${paymentLabel}`,
     '',
     `👩 *Nome:* ${name}`,
     `📱 *WhatsApp:* ${whatsapp}`,
-  ];
+  );
   if (notes) lines.push(`📝 *Observações:* ${notes}`);
   lines.push('', 'Aguardo a confirmação! 💜');
   return lines.join('\n');
