@@ -11,6 +11,7 @@ import PromotionsTab from '../components/admin/PromotionsTab';
 import CouponsTab from '../components/admin/CouponsTab';
 import HistoryTab from '../components/admin/HistoryTab';
 import DashboardTab from '../components/admin/DashboardTab';
+import GalleryTab from '../components/admin/GalleryTab';
 
 const NAV = [
   { to: '/admin/hoje', label: 'Hoje' },
@@ -22,6 +23,7 @@ const NAV = [
   { to: '/admin/agendamentos', label: 'Agendamentos' },
   { to: '/admin/banners', label: 'Banners' },
   { to: '/admin/horarios', label: 'Horários' },
+  { to: '/admin/galeria', label: 'Galeria' },
   { to: '/admin/historico', label: 'Histórico' },
   { to: '/admin/configuracoes', label: 'Configurações' },
 ];
@@ -407,6 +409,7 @@ export default function AdminPage() {
           <Route path="agenda" element={<Navigate to="/admin/agendamentos" replace />} />
           <Route path="banners" element={<BannersTab />} />
           <Route path="horarios" element={<HoursTab />} />
+          <Route path="galeria" element={<GalleryTab />} />
           <Route path="historico" element={<HistoryTab />} />
           <Route path="configuracoes" element={<SettingsTab />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
