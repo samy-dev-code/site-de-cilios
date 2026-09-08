@@ -144,10 +144,20 @@ export default function BookingModal({ services, loading = false, error = null, 
       .select('appointment_time, status, service_id, services(duration_minutes)')
       .eq('appointment_date', date)
       .in('status', ['pending', 'confirmed'])
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (!mounted) return;
+        setChecking(false);
+        if (error) {
+          // Em caso de falha, liberamos todos os horários em vez de travar o modal
+          setTakenSlots([]);
+          return;
+        }
+        setTakenSlots(data ?? []);
+      })
+      .catch(() => {
         if (mounted) {
-          setTakenSlots(data ?? []);
           setChecking(false);
+          setTakenSlots([]);
         }
       });
     return () => { mounted = false; };

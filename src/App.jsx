@@ -61,7 +61,8 @@ function SiteHome() {
 
   return (
     <div className="min-h-screen bg-[#0a0308]">
-      <Scene3DBackground />
+      {/* Canvases 3D pausados enquanto o modal está aberto — evita tela preta/travada */}
+      {!scheduleOpen && <Scene3DBackground />}
       {/* Navbar */}
       <header className="sticky top-0 z-50 glass border-x-0 border-t-0">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
@@ -89,7 +90,7 @@ function SiteHome() {
       </Reveal>
       {/* Hero — canvas 3D de cílios como peça central */}
       <section className="relative overflow-hidden">
-        <LashHero3D />
+        {scheduleOpen ? null : <LashHero3D />}
         <Parallax strength={24}>
         <div className="relative z-10 mx-auto max-w-4xl px-4 py-24 sm:py-32 text-center">
           <span className="inline-block rounded-full border border-lavender/30 bg-lavender/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-lavender animate-fade-up">
