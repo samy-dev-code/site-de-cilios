@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
 import AgendaTab from '../components/admin/AgendaTab';
+import TodayTab from '../components/admin/TodayTab';
 import ServicesTab from '../components/admin/ServicesTab';
 import BannersTab from '../components/admin/BannersTab';
 import HoursTab from '../components/admin/HoursTab';
@@ -12,6 +13,7 @@ import HistoryTab from '../components/admin/HistoryTab';
 import DashboardTab from '../components/admin/DashboardTab';
 
 const NAV = [
+  { to: '/admin/hoje', label: 'Hoje' },
   { to: '/admin', label: 'Dashboard', end: true },
   { to: '/admin/servicos', label: 'Serviços' },
   { to: '/admin/categorias', label: 'Categorias' },
@@ -235,6 +237,7 @@ export default function AdminPage() {
           <Route path="categorias" element={<CategoriesTab />} />
           <Route path="promocoes" element={<PromotionsTab onAudit={() => setAuditTick((t) => t + 1)} />} />
           <Route path="cupons" element={<CouponsTab onAudit={() => setAuditTick((t) => t + 1)} />} />
+          <Route path="hoje" element={<TodayTab />} />
           <Route path="agendamentos" element={<AgendaTab />} />
           <Route path="agenda" element={<Navigate to="/admin/agendamentos" replace />} />
           <Route path="banners" element={<BannersTab />} />
