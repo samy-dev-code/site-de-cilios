@@ -203,17 +203,25 @@ export default function AgendaTab() {
       )}
 
       {editing && (
-        <form onSubmit={saveReschedule} className="glass rounded-2xl p-5 mt-4 max-w-md">
-          <h4 className="font-serif text-lg text-lavender-soft mb-3">Remarcar: {editing.client_name}</h4>
-          <div className="flex gap-3">
-            <input type="date" name="date" required defaultValue={editing.appointment_date} className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-lavender/70" />
-            <input type="time" name="time" required defaultValue={editing.appointment_time.slice(0, 5)} step={900} className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-lavender/70" />
-          </div>
-          <div className="mt-3 flex gap-2">
-            <button type="button" onClick={() => setEditing(null)} className="rounded-full border border-white/10 px-4 py-1.5 text-xs text-plum-200/70 hover:text-lavender transition">Cancelar</button>
-            <button type="submit" className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-5 py-1.5 text-xs text-white hover:brightness-110 transition">Salvar nova data</button>
-          </div>
-        </form>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-3 sm:p-4" onClick={() => setEditing(null)}>
+          <form onSubmit={saveReschedule} onClick={(e) => e.stopPropagation()} className="glass sheet-safe w-full max-w-md overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5 mt-4">
+            <h4 className="font-serif text-lg text-lavender-soft mb-3">Remarcar: {editing.client_name}</h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Nova data</span>
+                <input type="date" name="date" required defaultValue={editing.appointment_date} className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-base text-white outline-none focus:border-lavender/70" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Novo horário</span>
+                <input type="time" name="time" required defaultValue={editing.appointment_time.slice(0, 5)} step={900} className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-base text-white outline-none focus:border-lavender/70" />
+              </label>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={() => setEditing(null)} className="tap-btn flex-1 rounded-full border border-white/10 px-4 text-xs text-plum-200/70 hover:text-lavender transition">Cancelar</button>
+              <button type="submit" className="tap-btn flex-1 rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-5 text-xs text-white hover:brightness-110 transition">Salvar nova data</button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

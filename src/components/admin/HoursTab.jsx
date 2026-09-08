@@ -4,6 +4,8 @@ import { supabase } from '../../integrations/supabase/client';
 const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+const inputCls = 'w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-base text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition';
+
 export default function HoursTab() {
   const [hours, setHours] = useState([]);
   const [blocked, setBlocked] = useState([]);
@@ -68,52 +70,82 @@ export default function HoursTab() {
 
   return (
     <div className="grid lg:grid-cols-2 gap-6 items-start">
-      <div className="glass rounded-3xl p-6">
+      {/* Horário de atendimento — um card por dia, empilhado no mobile */}
+      <div className="glass rounded-3xl p-4 sm:p-6">
         <h3 className="font-serif text-xl text-lavender-soft mb-5">Horário de atendimento</h3>
-        <ul className="space-y-3">
+        <ul className="space-y-2.5">
           {hours.map((h) => (
-            <li key={h.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 p-4 text-sm">
-              <span className="w-20 text-lavender-soft">{WEEKDAYS[h.weekday]}</span>
-              <label className="flex items-center gap-2 text-xs text-plum-200/80">
-                <input type="checkbox" checked={h.is_open} onChange={(e) => updateLocal(h.id, { is_open: e.target.checked })} className="accent-[#c9a7e8]" />
-                Aberto
-              </label>
+            <li key={h.id} className={`rounded-2xl border p-3.5 sm:p-4 text-sm transition ${h.is_open ? 'border-white/10' : 'border-white/5 opacity-60'}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium text-lavender-soft">{WEEKDAYS[h.weekday]}</span>
+                <label className="flex items-center gap-2.5 text-sm text-plum-200/80">
+                  <input
+                    type="checkbox"
+                    checked={h.is_open}
+                    onChange={(e) => updateLocal(h.id, { is_open: e.target.checked })}
+                    className="h-5 w-5 accent-[#c9a7e8]"
+                  />
+                  Aberto
+                </label>
+              </div>
               {h.is_open && (
-                <span className="flex items-center gap-2 text-xs text-plum-200/70">
-                  <input type="time" value={(h.open_time ?? '').slice(0, 5)} onChange={(e) => updateLocal(h.id, { open_time: e.target.value })} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-white outline-none focus:border-lavender/70" />
-                  às
-                  <input type="time" value={(h.close_time ?? '').slice(0, 5)} onChange={(e) => updateLocal(h.id, { close_time: e.target.value })} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-white outline-none focus:border-lavender/70" />
-                </span>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Abre</span>
+                    <input
+                      type="time"
+                      value={(h.open_time ?? '').slice(0, 5)}
+                      onChange={(e) => updateLocal(h.id, { open_time: e.target.value })}
+                      className={inputCls}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Fecha</span>
+                    <input
+                      type="time"
+                      value={(h.close_time ?? '').slice(0, 5)}
+                      onChange={(e) => updateLocal(h.id, { close_time: e.target.value })}
+                      className={inputCls}
+                    />
+                  </label>
+                </div>
               )}
             </li>
           ))}
         </ul>
-        <div className="mt-5 flex items-center gap-3">
-          <button onClick={saveHours} disabled={saving} className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2.5 text-sm text-white shadow-lg shadow-plum-600/30 hover:brightness-110 transition disabled:opacity-60">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button onClick={saveHours} disabled={saving} className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-3 text-sm text-white shadow-lg shadow-plum-600/30 hover:brightness-110 transition disabled:opacity-60">
             {saving ? 'Salvando…' : 'Salvar horários'}
           </button>
           {msg && <span className={`text-sm ${msg.err ? 'text-red-300' : 'text-emerald-300'}`}>{msg.text}</span>}
         </div>
       </div>
 
-      <div className="glass rounded-3xl p-6">
+      {/* Folgas e bloqueios */}
+      <div className="glass rounded-3xl p-4 sm:p-6">
         <h3 className="font-serif text-xl text-lavender-soft mb-5">Folgas e bloqueios</h3>
-        <form onSubmit={addBlock} className="flex flex-wrap gap-3 mb-5">
-          <input type="date" required value={newBlock.date} min={toISO(new Date())} onChange={(e) => setNewBlock({ ...newBlock, date: e.target.value })}
-            className="flex-1 min-w-40 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-white outline-none focus:border-lavender/70" />
-          <input value={newBlock.reason} onChange={(e) => setNewBlock({ ...newBlock, reason: e.target.value })} placeholder="Motivo (ex: férias)"
-            className="flex-1 min-w-40 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70" />
-          <button type="submit" className="rounded-full border border-lavender/50 px-5 py-2.5 text-sm text-lavender hover:bg-lavender/10 transition">Bloquear</button>
+        <form onSubmit={addBlock} className="space-y-3 mb-5">
+          <div>
+            <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-lavender/60">Data da folga</label>
+            <input type="date" required value={newBlock.date} min={toISO(new Date())} onChange={(e) => setNewBlock({ ...newBlock, date: e.target.value })} className={inputCls} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[10px] uppercase tracking-widest text-lavender/60">Motivo (opcional)</label>
+            <input value={newBlock.reason} onChange={(e) => setNewBlock({ ...newBlock, reason: e.target.value })} placeholder="Ex: férias, feriado" className={inputCls} />
+          </div>
+          <button type="submit" className="w-full sm:w-auto rounded-full border border-lavender/50 px-6 py-3 text-sm text-lavender hover:bg-lavender/10 transition">
+            Bloquear dia
+          </button>
         </form>
         <ul className="space-y-2">
           {blocked.length === 0 && <li className="text-sm text-plum-200/60">Nenhuma folga programada.</li>}
           {blocked.map((b) => (
-            <li key={b.id} className="flex items-center justify-between rounded-2xl border border-white/10 p-3.5 text-sm">
-              <span className="text-plum-100">
+            <li key={b.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 p-3.5 text-sm">
+              <span className="min-w-0 text-plum-100">
                 {new Date(`${b.blocked_date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
                 {b.reason && <span className="ml-2 text-plum-200/60 italic">— {b.reason}</span>}
               </span>
-              <button onClick={() => removeBlock(b)} className="text-[11px] text-red-300/60 hover:text-red-300 transition">Remover</button>
+              <button onClick={() => removeBlock(b)} className="tap-btn shrink-0 rounded-full border border-red-400/30 px-3 text-xs text-red-300/70 hover:bg-red-500/10 transition">Remover</button>
             </li>
           ))}
         </ul>

@@ -71,7 +71,7 @@ export default function CategoriesTab() {
         <h3 className="font-serif text-xl text-lavender-soft">Nova categoria</h3>
         <div className="flex flex-col sm:flex-row gap-3">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Extensão de cílios" className={`${inputCls} flex-1`} />
-          <button type="submit" disabled={saving} className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2.5 text-sm text-white shadow-lg shadow-plum-600/30 hover:brightness-110 transition disabled:opacity-60">
+          <button type="submit" disabled={saving} className="tap-btn rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 text-sm text-white shadow-lg shadow-plum-600/30 hover:brightness-110 transition disabled:opacity-60">
             {saving ? 'Salvando…' : 'Criar categoria'}
           </button>
         </div>

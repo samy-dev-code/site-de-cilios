@@ -295,7 +295,7 @@ export default function ServicesTab({ onAudit }) {
             <div>
               <label className={labelCls}>Imagem</label>
               <input
-                ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif"
+                ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment"
                 onChange={async (e) => {
                   const url = await uploadImage(e.target.files?.[0]);
                   if (url) setForm((f) => ({ ...f, image_url: url }));

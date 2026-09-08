@@ -291,10 +291,10 @@ export default function CouponsTab({ onAudit }) {
           </div>
           {isExpired && <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">Atenção: a data final já passou — este cupom será recusado como expirado.</p>}
           <div className="flex flex-wrap gap-3">
-            <button type="submit" disabled={saving} className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2.5 text-sm text-white shadow-lg shadow-plum-600/30 hover:brightness-110 transition disabled:opacity-60">
+            <button type="submit" disabled={saving} className="tap-btn w-full sm:w-auto rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 text-sm text-white shadow-lg shadow-plum-600/30 hover:brightness-110 transition disabled:opacity-60">
               {saving ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Criar cupom'}
             </button>
-            <button type="button" onClick={() => { setShowForm(false); setEditingId(null); setForm(EMPTY); }} className="rounded-full border border-white/10 px-5 py-2.5 text-sm text-plum-200/70 hover:text-lavender transition">Cancelar</button>
+            <button type="button" onClick={() => { setShowForm(false); setEditingId(null); setForm(EMPTY); }} className="tap-btn w-full sm:w-auto rounded-full border border-white/10 px-5 text-sm text-plum-200/70 hover:text-lavender transition">Cancelar</button>
           </div>
         </form>
       )}

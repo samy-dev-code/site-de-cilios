@@ -140,7 +140,7 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-3 sm:p-4" onClick={onClose}>
-      <div className="glass max-h-[92vh] w-full max-w-md overflow-y-auto rounded-3xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="glass sheet-safe max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-3xl sm:rounded-3xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div>
           <h4 className="font-serif text-xl text-lavender-soft">Agendar manutenção</h4>
           <p className="mt-1 text-xs text-plum-200/70">

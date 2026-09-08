@@ -395,12 +395,12 @@ export default function BannersTab() {
             </label>
           </div>
           {error && <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
-          <div className="flex gap-3">
-            <button type="submit" disabled={saving} className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2.5 text-sm text-white shadow-lg shadow-plum-600/30 hover:brightness-110 transition disabled:opacity-60">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button type="submit" disabled={saving} className="tap-btn w-full sm:w-auto rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 text-sm text-white shadow-lg shadow-plum-600/30 hover:brightness-110 transition disabled:opacity-60">
               {saving ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Adicionar banner'}
             </button>
             {editingId && (
-              <button type="button" onClick={() => { setEditingId(null); setForm(EMPTY_FORM); setDesktopFile(null); setMobileFile(null); }} className="rounded-full border border-white/10 px-5 py-2.5 text-sm text-plum-200/70 hover:text-lavender transition">
+              <button type="button" onClick={() => { setEditingId(null); setForm(EMPTY_FORM); setDesktopFile(null); setMobileFile(null); }} className="tap-btn w-full sm:w-auto rounded-full border border-white/10 px-5 text-sm text-plum-200/70 hover:text-lavender transition">
                 Cancelar
               </button>
             )}
@@ -423,6 +423,10 @@ export default function BannersTab() {
                   className={`glass glass-hover rounded-2xl p-4 text-sm flex gap-4 items-center cursor-grab active:cursor-grabbing ${!b.active || b.archived ? 'opacity-60' : ''}`}
                 >
                   <div className="hidden sm:block text-plum-300/40 select-none" title="Arraste para reordenar">⠿</div>
+                  <div className="flex flex-col sm:hidden gap-1">
+                    <button type="button" aria-label="Mover para cima" onClick={() => reorder(i, i - 1)} className="h-9 w-9 rounded-full border border-white/10 text-plum-200/70">▲</button>
+                    <button type="button" aria-label="Mover para baixo" onClick={() => reorder(i, i + 1)} className="h-9 w-9 rounded-full border border-white/10 text-plum-200/70">▼</button>
+                  </div>
                   <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/40">
                     {img ? <img src={img} alt={b.title ?? 'Banner'} className="h-full w-full object-cover" loading="lazy" /> : <div className="flex h-full items-center justify-center text-lg text-lavender/40">✦</div>}
                   </div>

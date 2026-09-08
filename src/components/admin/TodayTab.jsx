@@ -228,7 +228,7 @@ function TodayCard({ a, busyId, onChangeStatus, expanded, onToggleDetails, histo
   return (
     <li className={`glass rounded-2xl p-4 text-sm ${ring}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <p className="font-medium text-lavender-soft">
             {a.client_name}
             {isNext && <span className="ml-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 px-2 py-0.5 text-[10px] text-emerald-200">Próximo</span>}
@@ -254,24 +254,24 @@ function TodayCard({ a, busyId, onChangeStatus, expanded, onToggleDetails, histo
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {a.status === 'pending' && (
-          <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'confirmed')} className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-[11px] text-emerald-200 hover:bg-emerald-500/25 transition disabled:opacity-50">Aprovar</button>
+          <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'confirmed')} className="tap-btn rounded-full border border-emerald-400/40 bg-emerald-500/15 px-4 text-xs text-emerald-200 hover:bg-emerald-500/25 transition disabled:opacity-50">Aprovar</button>
         )}
         {(a.status === 'confirmed' || a.status === 'pending') && (
-          <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'in_progress')} className="rounded-full border border-violet-400/40 px-3 py-1 text-[11px] text-violet-200 hover:bg-violet-500/10 transition disabled:opacity-50">Iniciar atendimento</button>
+          <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'in_progress')} className="tap-btn rounded-full border border-violet-400/40 px-4 text-xs text-violet-200 hover:bg-violet-500/10 transition disabled:opacity-50">Iniciar atendimento</button>
         )}
         {(a.status === 'confirmed' || a.status === 'in_progress') && (
-          <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'completed')} className="rounded-full border border-sky-400/40 px-3 py-1 text-[11px] text-sky-200 hover:bg-sky-500/10 transition disabled:opacity-50">Concluir atendimento</button>
+          <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'completed')} className="tap-btn rounded-full border border-sky-400/40 px-4 text-xs text-sky-200 hover:bg-sky-500/10 transition disabled:opacity-50">Concluir atendimento</button>
         )}
         {a.status !== 'cancelled' && a.status !== 'completed' && (
-          <button disabled={busyId === a.id} onClick={onReschedule} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition disabled:opacity-50">Reagendar</button>
+          <button disabled={busyId === a.id} onClick={onReschedule} className="tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition disabled:opacity-50">Reagendar</button>
         )}
         {a.status === 'completed' && (
-          <button disabled={busyId === a.id} onClick={onMaintenance} className="rounded-full border border-lavender/40 bg-lavender/10 px-3 py-1 text-[11px] text-lavender hover:bg-lavender/20 transition disabled:opacity-50">Agendar manutenção</button>
+          <button disabled={busyId === a.id} onClick={onMaintenance} className="tap-btn rounded-full border border-lavender/40 bg-lavender/10 px-4 text-xs text-lavender hover:bg-lavender/20 transition disabled:opacity-50">Agendar manutenção</button>
         )}
         {a.status !== 'cancelled' && a.status !== 'completed' && (
-          <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'cancelled')} className="rounded-full border border-red-400/40 bg-red-500/15 px-3 py-1 text-[11px] text-red-200 hover:bg-red-500/25 transition disabled:opacity-50">Cancelar</button>
+          <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'cancelled')} className="tap-btn rounded-full border border-red-400/40 bg-red-500/15 px-4 text-xs text-red-200 hover:bg-red-500/25 transition disabled:opacity-50">Cancelar</button>
         )}
-        <button onClick={onToggleDetails} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">
+        <button onClick={onToggleDetails} className="tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">
           {expanded ? 'Ocultar detalhes' : 'Ver detalhes'}
         </button>
       </div>
