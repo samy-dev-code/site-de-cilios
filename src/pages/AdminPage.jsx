@@ -74,17 +74,92 @@ function Login() {
 }
 
 function SettingsTab() {
+  const EDITABLE = [
+    { key: 'business_name', label: 'Nome da empresa', placeholder: 'Mari Lash Designer' },
+    { key: 'whatsapp_number', label: 'WhatsApp comercial (só números, com DDI+DDD)', placeholder: '5514998792169' },
+    { key: 'instagram', label: 'Instagram (@usuário)', placeholder: 'marilashdesigner' },
+    { key: 'address', label: 'Endereço do estúdio', placeholder: 'Rua, número — Bairro, Cidade' },
+    { key: 'pix_key', label: 'Chave PIX', placeholder: 'chave@pix.com.br' },
+    { key: 'pix_holder_name', label: 'Nome no PIX', placeholder: 'MARI LASH DESIGNER' },
+    { key: 'pix_city', label: 'Cidade do PIX', placeholder: 'BAURU' },
+  ];
+  const [values, setValues] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error: err } = await supabase.from('settings').select('key, value');
+    if (err) {
+      setError(err.message);
+    } else {
+      setValues(Object.fromEntries(EDITABLE.map((f) => [f.key, data?.find((r) => r.key === f.key)?.value ?? ''])));
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  async function save(e) {
+    e.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    const rows = EDITABLE.map((f) => ({ key: f.key, value: values[f.key] ?? '' }));
+    const { error: err } = await supabase.from('settings').upsert(rows, { onConflict: 'key' });
+    if (err) setError(err.message);
+    else setSaved(true);
+    setSaving(false);
+  }
+
+  if (loading) {
+    return (
+      <div className="glass rounded-3xl p-8 space-y-4">
+        {[0, 1, 2, 3].map((i) => <div key={i} className="h-10 animate-pulse rounded-xl bg-white/5" />)}
+      </div>
+    );
+  }
+
+  if (error && !values) {
+    return (
+      <div className="glass rounded-3xl p-8 text-center">
+        <p className="text-sm text-red-200">Erro ao carregar configurações: {error}</p>
+        <button onClick={load} className="mt-4 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">Tentar novamente</button>
+      </div>
+    );
+  }
+
   return (
-    <div className="glass rounded-3xl p-8 text-sm text-plum-200/80 space-y-4">
-      <h3 className="font-serif text-xl text-lavender-soft">Configurações</h3>
-      <p>Esta seção concentra as preferências gerais do estúdio (dados de contato, pagamentos e integrações).</p>
-      <ul className="list-disc space-y-1.5 pl-5 text-plum-200/70">
-        <li>Horários de funcionamento são gerenciados na aba <strong className="text-lavender">Horários</strong>.</li>
-        <li>Banners promocionais são gerenciados na aba <strong className="text-lavender">Banners</strong>.</li>
-        <li>O catálogo de serviços é gerenciado em <strong className="text-lavender">Serviços</strong>.</li>
-      </ul>
-      <p className="text-xs text-plum-300/50">Sessão autenticada via Supabase Auth. Nenhuma credencial é armazenada no navegador.</p>
-    </div>
+    <form onSubmit={save} className="glass rounded-3xl p-6 sm:p-8 space-y-5">
+      <div>
+        <h3 className="font-serif text-xl text-lavender-soft">Configurações</h3>
+        <p className="mt-1 text-sm text-plum-200/70">Informações gerais do estúdio usadas pelo site e pelo fluxo de agendamento.</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {EDITABLE.map((f) => (
+          <div key={f.key} className={f.key === 'address' ? 'sm:col-span-2' : ''}>
+            <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">{f.label}</label>
+            <input
+              value={values[f.key] ?? ''}
+              onChange={(e) => { setValues((v) => ({ ...v, [f.key]: e.target.value })); setSaved(false); }}
+              placeholder={f.placeholder}
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
+            />
+          </div>
+        ))}
+      </div>
+      {saved && <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">Configurações salvas! ✦</div>}
+      {error && <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+      <button
+        type="submit" disabled={saving}
+        className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-60"
+      >
+        {saving ? 'Salvando…' : 'Salvar configurações'}
+      </button>
+    </form>
   );
 }
 

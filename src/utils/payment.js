@@ -57,7 +57,7 @@ export function buildBookingMessage({ service, date, time, name, whatsapp, notes
   return lines.join('\n');
 }
 
-export function openWhatsApp(message) {
-  const url = `https://wa.me/${WHATSAPP_COMMERCIAL}?text=${encodeURIComponent(message)}`;
+export function openWhatsApp(message, number = '5514998792169') {
+  const url = `https://wa.me/${(number || '').replace(/\D/g, '') || '5514998792169'}?text=${encodeURIComponent(message)}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 }

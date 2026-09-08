@@ -133,7 +133,7 @@ export default function BookingModal({ services, loading = false, error = null, 
     if (h.error) setHoursError(h.error.message);
     setHours(asArray(h.data));
     setBlocked(asArray(b.data));
-    const s = await supabase.from('settings').select('key, value').in('key', ['pix_key', 'pix_holder_name', 'pix_city']);
+    const s = await supabase.from('settings').select('key, value').in('key', ['pix_key', 'pix_holder_name', 'pix_city', 'whatsapp_number']);
     if (s.data) setPix(Object.fromEntries(s.data.map((r) => [r.key, r.value])));
   };
 
@@ -265,7 +265,7 @@ export default function BookingModal({ services, loading = false, error = null, 
         notes: notes.trim(),
         paymentLabel: PAYMENT_LABELS[payment] || 'A combinar',
         amount: service.price,
-      }));
+      }), pix.whatsapp_number);
       setDone(true);
     } catch (e) {
       setSubmitError(e.message || 'Não foi possível concluir o agendamento. Tente novamente.');
