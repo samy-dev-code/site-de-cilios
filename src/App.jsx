@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import AdminPage from './pages/AdminPage.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import TermsOfUse from './pages/TermsOfUse.jsx';
+import SiteFooter from './components/SiteFooter';
+import WhatsAppFloat from './components/WhatsAppFloat';
 import { useFetch } from './hooks/useFetch';
 import { supabase } from './integrations/supabase/client';
 import BannerCarousel from './components/BannerCarousel';
@@ -11,6 +15,8 @@ import BookingModal from './components/BookingModal';
 import Scene3DBackground from './components/Scene3DBackground';
 import LashHero3D from './components/LashHero3D';
 import { Reveal, Parallax } from './components/Reveal';
+import { useSettings, instagramUrl } from './hooks/useSettings';
+import { InstagramIcon } from './components/icons';
 
 const NAV_LINKS = [
   { href: '#servicos', label: 'Serviços' },
@@ -150,6 +156,8 @@ function SiteHome() {
   });
   const categories = useFetch('categories', { filters: [['active', 'eq', true]], order: { col: 'display_order' } });
   const testimonials = useFetch('testimonials', { filters: [['approved', 'eq', true]], order: { col: 'sort_order' } });
+  const { settings } = useSettings();
+  const instagram = settings.instagram;
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [presetService, setPresetService] = useState(null);
   const [scrolled, setScrolled] = useState(false);
@@ -340,16 +348,22 @@ function SiteHome() {
           >
             Quero agendar
           </button>
+          <div className="relative mt-6">
+            <a
+              href={instagramUrl(instagram)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram da empresa"
+              className="inline-flex items-center gap-2 rounded-full border border-plum-500/25 bg-plum-900/30 px-6 py-2.5 text-sm text-plum-200 transition hover:border-lavender/60 hover:text-lavender"
+            >
+              <InstagramIcon className="h-4 w-4" />
+              Siga @{(instagram || '').replace(/^@/, '') || 'nossa equipe'} no Instagram
+            </a>
+          </div>
         </div>
       </section>
 
-      <footer className="relative border-t border-plum-500/10 py-10">
-        <div aria-hidden className="divider-fade absolute inset-x-0 top-0" />
-        <div className="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-plum-300/50">
-          <p>© {new Date().getFullYear()} Mari Lash Designer · Todos os direitos reservados</p>
-          <p className="tracking-[0.25em] uppercase text-[0.65rem]">High-end lash studio</p>
-        </div>
-      </footer>
+      <SiteFooter />
 
       {scheduleOpen && (
         <BookingModal
@@ -368,6 +382,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/admin/*" element={<AdminPage />} />
+      <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
+      <Route path="/termos-de-uso" element={<TermsOfUse />} />
       <Route path="*" element={<SiteHome />} />
     </Routes>
   );

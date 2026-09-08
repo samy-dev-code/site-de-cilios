@@ -194,6 +194,17 @@ body {
   to { background-position: -200% 0; }
 }
 
+/* ─────────────────────────────────────────────
+   PÁGINAS LEGAIS — tipografia dos termos
+   ───────────────────────────────────────────── */
+.prose-legals h2 {
+  color: #E9DBF8;
+}
+.prose-legals strong {
+  color: #DCC2F5;
+  font-weight: 600;
+}
+
 ::selection {
   background: #6D19A8;
   color: #ffffff;
