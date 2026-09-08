@@ -120,6 +120,7 @@ export default function BookingModal({ services, promotions, loading = false, er
   const serviceList = asArray(services);
   const promotionList = asArray(promotions);
   const [pix, setPix] = useState({ pix_key: '', pix_holder_name: '', pix_city: '' });
+  const [copied, setCopied] = useState(false);
   const [hoursError, setHoursError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -200,7 +201,7 @@ export default function BookingModal({ services, promotions, loading = false, er
     if (h.error) setHoursError(h.error.message);
     setHours(asArray(h.data));
     setBlocked(asArray(b.data));
-    const s = await supabase.from('settings').select('key, value').in('key', ['pix_key', 'pix_holder_name', 'pix_city', 'whatsapp_number']);
+    const s = await supabase.from('settings').select('key, value').in('key', ['pix_key', 'pix_holder_name', 'pix_city', 'pix_enabled', 'pix_copia_e_cola', 'pix_qr_url', 'whatsapp_number']);
     if (s.data) setPix(Object.fromEntries(s.data.map((r) => [r.key, r.value])));
   };
 
@@ -331,10 +332,51 @@ export default function BookingModal({ services, promotions, loading = false, er
     setCouponMsg(null);
   };
 
-  const pixPayload = useMemo(
-    () => (pix.pix_key ? buildPixPayload({ key: pix.pix_key, name: pix.pix_holder_name, city: pix.pix_city, amount: pricing.final || undefined, txid: 'MARI-LASH' }) : ''),
-    [pix, pricing.final]
+  const pixEnabled = pix.pix_enabled !== 'false';
+  const availablePayments = useMemo(
+    () => (pixEnabled ? PAYMENTS : PAYMENTS.filter((m) => m.id !== 'pix')),
+    [pixEnabled]
   );
+  // Prioriza o "PIX Copia e Cola" configurado pelo admin; gera EMV apenas como fallback
+  const pixPayload = useMemo(() => {
+    if (!pixEnabled) return '';
+    const copied = (pix.pix_copia_e_cola || '').trim();
+    if (copied.length > 10) return copied;
+    if (!pix.pix_key || !pix.pix_holder_name) return '';
+    try {
+      return buildPixPayload({ key: pix.pix_key, name: pix.pix_holder_name, city: pix.pix_city, amount: pricing.final || undefined, txid: 'MARI-LASH' });
+    } catch (e) {
+      console.error('Erro ao gerar payload PIX:', e);
+      return '';
+    }
+  }, [pix, pricing.final, pixEnabled]);
+
+  function copyPixCode() {
+    if (!pixPayload) return;
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    };
+    const fallbackCopy = () => {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = pixPayload;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        done();
+      } catch (e) {
+        console.error('Falha ao copiar o código PIX:', e);
+      }
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(pixPayload).then(done).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  }
 
   async function submit() {
     setSubmitting(true);
@@ -687,18 +729,62 @@ export default function BookingModal({ services, promotions, loading = false, er
                       )}
                       {pricing.totalDiscount === 0 && <p className="mt-1 text-lavender">{brl(pricing.final)}</p>}
                     </div>
-                    {payment === 'pix' && pricing.final > 0 && pixPayload ? (
-                      <div className="mb-4 flex flex-col items-center gap-3 rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4">
-                        <QRCodeSVG value={pixPayload} size={168} bgColor="#0d0512" fgColor="#e9d5ff" />
-                        <p className="text-center text-xs text-plum-200/70">Escaneie com o app do seu banco — valor de {brl(pricing.final)}</p>
+                    {payment === 'pix' && pricing.final > 0 && (
+                      <div className="mb-4 rounded-2xl border border-lavender/30 bg-lavender/5 p-4">
+                        <p className="text-center font-serif text-lg text-lavender-soft">Pagamento via PIX</p>
+                        <p className="mt-0.5 text-center text-xs text-plum-200/60">Abra o app do banco e escaneie o QR Code</p>
+                        <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-center sm:gap-6">
+                          {pix.pix_qr_url ? (
+                            <img
+                              src={pix.pix_qr_url}
+                              alt="QR Code PIX para pagamento"
+                              className="h-52 w-52 max-w-full rounded-2xl border border-plum-500/30 bg-white object-contain p-2"
+                            />
+                          ) : pixPayload ? (
+                            <div className="rounded-2xl bg-white p-3">
+                              <QRCodeSVG value={pixPayload} size={184} bgColor="#ffffff" fgColor="#1a0b2e" />
+                            </div>
+                          ) : null}
+                          <div className="w-full max-w-xs sm:w-56">
+                            {pixPayload ? (
+                              <>
+                                <p className="mb-1.5 text-xs uppercase tracking-wider text-plum-200/70">PIX Copia e Cola</p>
+                                <div className="max-h-24 overflow-y-auto break-all rounded-xl border border-plum-500/25 bg-plum-900/40 p-2.5 font-mono text-[10px] leading-relaxed text-plum-200/80">
+                                  {pixPayload}
+                                </div>
+                                <button
+                                  onClick={copyPixCode}
+                                  className={`mt-2 w-full rounded-full py-2.5 text-xs font-medium uppercase tracking-wider transition ${
+                                    copied
+                                      ? 'bg-emerald-500/20 text-emerald-200'
+                                      : 'bg-gradient-to-r from-plum-700 to-plum-500 text-white hover:brightness-110'
+                                  }`}
+                                >
+                                  {copied ? '✓ Código copiado!' : 'Copiar PIX'}
+                                </button>
+                              </>
+                            ) : (
+                              <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+                                PIX Copia e Cola indisponível — use o QR Code ou combine pelo WhatsApp.
+                              </p>
+                            )}
+                            {pix.pix_key && (
+                              <p className="mt-3 break-all text-center text-[11px] text-plum-200/50 sm:text-left">
+                                Chave: <strong className="text-plum-200/80">{pix.pix_key}</strong>
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    ) : payment === 'pix' && pricing.final === 0 ? (
+                    )}
+                    {payment === 'pix' && pricing.final === 0 && (
                       <p className="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-center text-xs text-emerald-200">Sem valor a pagar — os descontos cobrem o total. 🎉</p>
-                    ) : payment === 'pix' && !pix.pix_key ? (
-                      <p className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200">A chave PIX ainda não foi configurada. Escolha outra forma de pagamento ou combine diretamente pelo WhatsApp.</p>
-                    ) : null}
+                    )}
+                    {payment === 'pix' && pricing.final > 0 && !pixPayload && !pix.pix_qr_url && (
+                      <p className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200">O PIX ainda não foi configurado. Escolha outra forma de pagamento ou combine diretamente pelo WhatsApp.</p>
+                    )}
                     <div className="space-y-2">
-                      {PAYMENTS.map((m) => (
+                      {availablePayments.map((m) => (
                         <button
                           key={m.id}
                           onClick={() => setPayment(m.id)}

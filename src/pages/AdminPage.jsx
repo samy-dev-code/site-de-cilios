@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
 import AgendaTab from '../components/admin/AgendaTab';
@@ -85,15 +85,61 @@ function SettingsTab() {
     { key: 'whatsapp_number', label: 'WhatsApp comercial (só números, com DDI+DDD)', placeholder: '5514998792169' },
     { key: 'instagram', label: 'Instagram (@usuário)', placeholder: 'marilashdesigner' },
     { key: 'address', label: 'Endereço do estúdio', placeholder: 'Rua, número — Bairro, Cidade' },
-    { key: 'pix_key', label: 'Chave PIX', placeholder: 'chave@pix.com.br' },
-    { key: 'pix_holder_name', label: 'Nome no PIX', placeholder: 'MARI LASH DESIGNER' },
+    { key: 'pix_key', label: 'Chave PIX (e-mail, CPF/CNPJ ou telefone)', placeholder: 'chave@pix.com.br' },
+    { key: 'pix_holder_name', label: 'Nome do recebedor no PIX', placeholder: 'MARI LASH DESIGNER' },
     { key: 'pix_city', label: 'Cidade do PIX', placeholder: 'BAURU' },
+    { key: 'pix_copia_e_cola', label: 'PIX Copia e Cola (código)', placeholder: '00020126…', textarea: true },
   ];
+
+  async function savePixToggle(next) {
+    setPixSaving(true);
+    setPixError(null);
+    try {
+      const { error } = await supabase.from('settings').upsert({ key: 'pix_enabled', value: String(next) });
+      if (error) throw error;
+      setPixEnabled(next);
+    } catch (e) {
+      setPixError(e.message || 'Não foi possível salvar. Tente novamente.');
+    } finally {
+      setPixSaving(false);
+    }
+  }
+
+  async function handlePixQrUpload(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) {
+      setPixError('Selecione um arquivo de imagem para o QR Code.');
+      return;
+    }
+    setPixSaving(true);
+    setPixError(null);
+    try {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+      const path = `qr-code-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('pix').upload(path, file, { contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('pix').getPublicUrl(path);
+      const url = pub?.publicUrl;
+      if (!url) throw new Error('Não foi possível obter a URL pública do QR Code.');
+      const { error: dbErr } = await supabase.from('settings').upsert({ key: 'pix_qr_url', value: url });
+      if (dbErr) throw dbErr;
+      setPixQrUrl(url);
+    } catch (e) {
+      setPixError(e.message || 'Falha no upload do QR Code. Tente novamente.');
+    } finally {
+      setPixSaving(false);
+    }
+  }
   const [values, setValues] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [pixSaving, setPixSaving] = useState(false);
+  const [pixError, setPixError] = useState(null);
+  const [pixEnabled, setPixEnabled] = useState(true);
+  const [pixQrUrl, setPixQrUrl] = useState('');
+  const qrFileRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -102,7 +148,10 @@ function SettingsTab() {
     if (err) {
       setError(err.message);
     } else {
-      setValues(Object.fromEntries(EDITABLE.map((f) => [f.key, data?.find((r) => r.key === f.key)?.value ?? ''])));
+      const find = (k) => data?.find((r) => r.key === k)?.value ?? '';
+      setValues(Object.fromEntries(EDITABLE.map((f) => [f.key, find(f.key)])));
+      setPixEnabled(find('pix_enabled') !== 'false');
+      setPixQrUrl(find('pix_qr_url') || '/pix-marilash.png');
     }
     setLoading(false);
   };
@@ -148,14 +197,71 @@ function SettingsTab() {
         {EDITABLE.map((f) => (
           <div key={f.key} className={f.key === 'address' ? 'sm:col-span-2' : ''}>
             <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">{f.label}</label>
+            {f.textarea ? (
+              <textarea
+                rows={4}
+                value={values[f.key] ?? ''}
+                onChange={(e) => { setValues((v) => ({ ...v, [f.key]: e.target.value })); setSaved(false); }}
+                placeholder={f.placeholder}
+                className="w-full break-all rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-mono text-xs text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
+              />
+            ) : (
             <input
               value={values[f.key] ?? ''}
               onChange={(e) => { setValues((v) => ({ ...v, [f.key]: e.target.value })); setSaved(false); }}
               placeholder={f.placeholder}
               className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
             />
+            )}
           </div>
         ))}
+      </div>
+
+      {/* Pagamento PIX */}
+      <div className="rounded-2xl border border-lavender/20 bg-black/20 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="font-serif text-lg text-lavender-soft">Pagamento via PIX</h4>
+            <p className="mt-0.5 text-xs text-plum-200/60">Controle o que aparece para a cliente no checkout.</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={pixEnabled}
+            disabled={pixSaving}
+            onClick={() => savePixToggle(!pixEnabled)}
+            className={`relative h-7 w-12 rounded-full transition ${pixEnabled ? 'bg-gradient-to-r from-plum-500 to-lavender' : 'bg-white/15'} ${pixSaving ? 'opacity-50' : ''}`}
+          >
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${pixEnabled ? 'left-6' : 'left-1'}`} />
+          </button>
+        </div>
+        <p className={`mt-2 text-xs ${pixEnabled ? 'text-emerald-300' : 'text-plum-200/60'}`}>
+          {pixEnabled ? 'PIX ativo — aparece como opção no agendamento.' : 'PIX desativado — a opção fica oculta para as clientes.'}
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          {pixQrUrl && (
+            <img src={pixQrUrl} alt="QR Code PIX atual" className="h-24 w-24 rounded-xl border border-white/10 bg-white object-contain p-1" />
+          )}
+          <div>
+            <input
+              ref={qrFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { handlePixQrUpload(e.target.files?.[0]); e.target.value = ''; }}
+            />
+            <button
+              type="button"
+              disabled={pixSaving}
+              onClick={() => qrFileRef.current?.click()}
+              className="rounded-full border border-lavender/40 px-5 py-2 text-xs text-lavender transition hover:bg-lavender/10 disabled:opacity-50"
+            >
+              {pixSaving ? 'Enviando…' : 'Alterar imagem do QR Code'}
+            </button>
+            <p className="mt-1 text-[11px] text-plum-200/50">PNG ou JPG do QR Code do seu banco.</p>
+          </div>
+        </div>
+        {pixError && <p className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2 text-xs text-red-200">{pixError}</p>}
       </div>
       {saved && <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">Configurações salvas! ✦</div>}
       {error && <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
