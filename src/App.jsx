@@ -5,6 +5,7 @@ import BannerCarousel from './components/BannerCarousel';
 import ServiceCard from './components/ServiceCard';
 import TestimonialCard from './components/TestimonialCard';
 import Gallery from './components/Gallery';
+import BookingModal from './components/BookingModal';
 
 function Loader() {
   return (
@@ -127,20 +128,20 @@ export default function App() {
         © {new Date().getFullYear()} Mari Lash Designer · Todos os direitos reservados
       </footer>
 
-      {/* Modal agendamento (implementado na Parte 2) */}
-      {scheduleOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={() => setScheduleOpen(false)}>
+      {scheduleOpen && !services.loading && services.error === null && (
+        <BookingModal services={services.data} onClose={() => setScheduleOpen(false)} />
+      )}
+      {scheduleOpen && services.loading && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm" onClick={() => setScheduleOpen(false)}>
+          <span className="h-10 w-10 animate-spin rounded-full border-2 border-lavender/30 border-t-lavender" />
+        </div>
+      )}
+      {scheduleOpen && services.error !== null && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4" onClick={() => setScheduleOpen(false)}>
           <div className="glass rounded-3xl max-w-md w-full p-8 text-center" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-serif text-2xl text-gradient">Agendamento em breve</h3>
-            <p className="mt-3 text-plum-200/80 text-sm">
-              O fluxo completo de agendamento estará disponível na próxima etapa do projeto.
-            </p>
-            <button
-              onClick={() => setScheduleOpen(false)}
-              className="mt-6 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition"
-            >
-              Fechar
-            </button>
+            <h3 className="font-serif text-2xl text-gradient">Ops! 😔</h3>
+            <p className="mt-3 text-plum-200/80 text-sm">Não conseguimos carregar os serviços agora. Verifique sua conexão e tente novamente.</p>
+            <button onClick={() => setScheduleOpen(false)} className="mt-6 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">Fechar</button>
           </div>
         </div>
       )}
