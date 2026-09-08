@@ -75,7 +75,7 @@ function SiteHome() {
           </div>
           <button
             onClick={() => setScheduleOpen(true)}
-            className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-5 py-2 text-sm font-medium text-white shadow-lg shadow-plum-600/30 transition hover:brightness-110"
+            className="btn-lux rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-5 py-2 text-sm font-medium text-white shadow-lg shadow-plum-600/30 transition hover:brightness-110"
           >
             Agendar
           </button>
@@ -107,7 +107,7 @@ function SiteHome() {
         </Reveal>
         <button
           onClick={() => setScheduleOpen(true)}
-          className="mt-8 rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3.5 text-base font-medium text-white shadow-xl shadow-plum-600/40 transition hover:brightness-110 hover:scale-[1.02]"
+          className="btn-lux mt-8 rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3.5 text-base font-medium text-white shadow-xl shadow-plum-600/40 transition hover:brightness-110 hover:scale-[1.02]"
         >
           Agendar meu horário ✦
         </button>
@@ -160,22 +160,13 @@ function SiteHome() {
         © {new Date().getFullYear()} Mari Lash Designer · Todos os direitos reservados
       </footer>
 
-      {scheduleOpen && !services.loading && services.error === null && (
-        <BookingModal services={services.data} onClose={() => setScheduleOpen(false)} />
-      )}
-      {scheduleOpen && services.loading && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm" onClick={() => setScheduleOpen(false)}>
-          <span className="h-10 w-10 animate-spin rounded-full border-2 border-lavender/30 border-t-lavender" />
-        </div>
-      )}
-      {scheduleOpen && services.error !== null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4" onClick={() => setScheduleOpen(false)}>
-          <div className="glass rounded-3xl max-w-md w-full p-8 text-center" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-serif text-2xl text-gradient">Ops! 😔</h3>
-            <p className="mt-3 text-plum-200/80 text-sm">Não conseguimos carregar os serviços agora. Verifique sua conexão e tente novamente.</p>
-            <button onClick={() => setScheduleOpen(false)} className="mt-6 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">Fechar</button>
-          </div>
-        </div>
+      {scheduleOpen && (
+        <BookingModal
+          services={services.data}
+          loading={services.loading}
+          error={services.error}
+          onClose={() => setScheduleOpen(false)}
+        />
       )}
     </div>
   );

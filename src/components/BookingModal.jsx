@@ -60,7 +60,7 @@ function fmtBR(iso) {
   return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
 }
 
-export default function BookingModal({ services, onClose }) {
+export default function BookingModal({ services, loading = false, error = null, onClose }) {
   const [step, setStep] = useState(0);
   const [service, setService] = useState(null);
   const [date, setDate] = useState(null);
@@ -76,7 +76,7 @@ export default function BookingModal({ services, onClose }) {
   const [pix, setPix] = useState({ pix_key: '', pix_holder_name: '', pix_city: '' });
   const [hoursError, setHoursError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
   const [done, setDone] = useState(false);
 
   // Trava o scroll do fundo enquanto o modal está aberto
@@ -175,7 +175,7 @@ export default function BookingModal({ services, onClose }) {
 
   async function submit() {
     setSubmitting(true);
-    setError(null);
+    setSubmitError(null);
     try {
       // Revalidação final de conflito no banco antes de inserir
       const { data: conflicts } = await supabase
@@ -185,7 +185,7 @@ export default function BookingModal({ services, onClose }) {
         .eq('appointment_time', time)
         .in('status', ['pending', 'confirmed']);
       if (conflicts && conflicts.length > 0) {
-        setError('Ops! Este horário acabou de ser preenchido por outra pessoa. Escolha outro, por favor.');
+        setSubmitError('Ops! Este horário acabou de ser preenchido por outra pessoa. Escolha outro, por favor.');
         setSubmitting(false);
         return;
       }
@@ -211,7 +211,7 @@ export default function BookingModal({ services, onClose }) {
       }));
       setDone(true);
     } catch (e) {
-      setError(e.message || 'Não foi possível concluir o agendamento. Tente novamente.');
+      setSubmitError(e.message || 'Não foi possível concluir o agendamento. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
@@ -219,7 +219,7 @@ export default function BookingModal({ services, onClose }) {
 
   function reset() {
     setStep(0); setService(null); setDate(null); setTime(null);
-    setName(''); setWhatsapp(''); setNotes(''); setPayment(null); setDone(false); setError(null);
+    setName(''); setWhatsapp(''); setNotes(''); setPayment(null); setDone(false); setSubmitError(null);
   }
 
   return (
@@ -228,7 +228,22 @@ export default function BookingModal({ services, onClose }) {
         className="glass rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 sm:p-8 animate-fade-up"
         onClick={(e) => e.stopPropagation()}
       >
-        {done ? (
+        {loading ? (
+          <div className="py-20 text-center">
+            <Spinner />
+            <p className="mt-4 text-sm text-plum-200/70">Preparando seu agendamento… ✦</p>
+          </div>
+        ) : error ? (
+          <div className="py-12 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-red-400/40 bg-red-500/10 text-2xl">😔</div>
+            <h3 className="mt-5 font-serif text-2xl text-gradient">Não foi possível carregar</h3>
+            <p className="mt-3 text-sm text-plum-200/80">Verifique sua conexão e tente novamente.</p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button onClick={onClose} className="rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">Fechar</button>
+              <button onClick={() => window.location.reload()} className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2 text-sm text-white hover:brightness-110 transition">Tentar de novo</button>
+            </div>
+          </div>
+        ) : done ? (
           <div className="text-center py-8">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-plum-500 to-lavender shadow-xl shadow-plum-600/40">
               <svg viewBox="0 0 24 24" className="h-8 w-8 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
@@ -256,8 +271,8 @@ export default function BookingModal({ services, onClose }) {
             <Stepper step={step} />
             <p className="mb-6 text-center text-xs uppercase tracking-[0.3em] text-lavender/70">{STEPS[step]}</p>
 
-            {error && (
-              <div className="mb-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>
+            {submitError && (
+              <div className="mb-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{submitError}</div>
             )}
 
             {/* Passo 0 — Serviço */}
