@@ -1,9 +1,40 @@
 import { useEffect, useMemo, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../integrations/supabase/client';
+import { buildPixPayload, buildBookingMessage, openWhatsApp } from '../utils/payment';
 
 const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-const STEPS = ['Serviço', 'Data', 'Horário', 'Seus dados', 'Confirmação'];
+const STEPS = ['Serviço', 'Data', 'Horário', 'Seus dados', 'Pagamento', 'Confirmação'];
+
+const PAYMENTS = [
+  {
+    id: 'pix',
+    label: 'PIX',
+    desc: 'Pague agora pelo app do seu banco com o QR Code ao lado.',
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 2.1a2.6 2.6 0 0 1 1.85.77l3.7 3.7h-2.6a3.9 3.9 0 0 0-3.9 3.9v.06a3.9 3.9 0 0 1-3.9 3.9H2.87a2.6 2.6 0 0 1 0-3.68L10.15 2.87A2.6 2.6 0 0 1 12 2.1Zm8.9 9.9a1.3 1.3 0 0 1 0 1.84l-7.05 7.05a2.6 2.6 0 0 1-3.68 0l-3.7-3.7h2.6a3.9 3.9 0 0 0 3.9-3.9v-.06a3.9 3.9 0 0 1 3.9-3.9h4.28a1.3 1.3 0 0 1 .92.38ZM2.9 10.55a1.3 1.3 0 0 1-.93-2.21L8.6 1.72a2.6 2.6 0 0 1 .62-.46L2.9 8.58a1.3 1.3 0 0 0 0 1.84l7.05 7.05a2.6 2.6 0 0 0 3.68 0l3.7-3.7h-2.6a3.9 3.9 0 0 1-3.9-3.9v-.06a3.9 3.9 0 0 0-3.9-3.9H2.9Z"/></svg>
+    ),
+  },
+  {
+    id: 'cash',
+    label: 'Dinheiro',
+    desc: 'Pagamento presencial no estúdio, no dia do atendimento.',
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
+    ),
+  },
+  {
+    id: 'card',
+    label: 'Cartão (Débito/Crédito)',
+    desc: 'Processamento na maquininha presencial no estúdio.',
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
+    ),
+  },
+];
+
+const PAYMENT_LABELS = { pix: 'PIX', cash: 'Dinheiro', card: 'Cartão (Débito/Crédito)' };
 
 const brl = (v) => `R$ ${Number(v).toFixed(2).replace('.', ',')}`;
 const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -41,6 +72,8 @@ export default function BookingModal({ services, onClose }) {
   const [blocked, setBlocked] = useState([]);
   const [takenSlots, setTakenSlots] = useState({});
   const [checking, setChecking] = useState(false);
+  const [payment, setPayment] = useState(null);
+  const [pix, setPix] = useState({ pix_key: '', pix_holder_name: '', pix_city: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
@@ -54,6 +87,8 @@ export default function BookingModal({ services, onClose }) {
       ]);
       if (h.data) setHours(h.data);
       if (b.data) setBlocked(b.data);
+      const s = await supabase.from('settings').select('key, value').in('key', ['pix_key', 'pix_holder_name', 'pix_city']);
+      if (s.data) setPix(Object.fromEntries(s.data.map((r) => [r.key, r.value])));
     })();
   }, []);
 
@@ -121,7 +156,12 @@ export default function BookingModal({ services, onClose }) {
 
   const blockedMap = useMemo(() => Object.fromEntries(blocked.map((b) => [b.blocked_date, b.reason])), [blocked]);
 
-  const canContinue = [!!service, !!date, !!time && !checking, name.trim().length >= 3 && whatsapp.replace(/\D/g, '').length >= 10, true][step];
+  const canContinue = [!!service, !!date, !!time && !checking, name.trim().length >= 3 && whatsapp.replace(/\D/g, '').length >= 10, !!payment, true][step];
+
+  const pixPayload = useMemo(
+    () => (pix.pix_key ? buildPixPayload({ key: pix.pix_key, name: pix.pix_holder_name, city: pix.pix_city, amount: service?.price, txid: 'MARI-LASH' }) : ''),
+    [pix, service]
+  );
 
   async function submit() {
     setSubmitting(true);
@@ -145,9 +185,20 @@ export default function BookingModal({ services, onClose }) {
         client_whatsapp: whatsapp.trim(),
         appointment_date: date,
         appointment_time: time,
+        payment_method: payment || 'pending',
         notes: notes.trim() || null,
       });
       if (err) throw err;
+      openWhatsApp(buildBookingMessage({
+        service: service.name,
+        date: `${WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, ${fmtBR(date)}`,
+        time,
+        name: name.trim(),
+        whatsapp: whatsapp.trim(),
+        notes: notes.trim(),
+        paymentLabel: PAYMENT_LABELS[payment] || 'A combinar',
+        amount: service.price,
+      }));
       setDone(true);
     } catch (e) {
       setError(e.message || 'Não foi possível concluir o agendamento. Tente novamente.');
@@ -158,7 +209,7 @@ export default function BookingModal({ services, onClose }) {
 
   function reset() {
     setStep(0); setService(null); setDate(null); setTime(null);
-    setName(''); setWhatsapp(''); setNotes(''); setDone(false); setError(null);
+    setName(''); setWhatsapp(''); setNotes(''); setPayment(null); setDone(false); setError(null);
   }
 
   return (
@@ -182,6 +233,7 @@ export default function BookingModal({ services, onClose }) {
               <p><span className="text-lavender/70">Data:</span> {fmtBR(date)}</p>
               <p><span className="text-lavender/70">Horário:</span> {time}</p>
               <p><span className="text-lavender/70">Valor:</span> {brl(service.price)}</p>
+              <p><span className="text-lavender/70">Pagamento:</span> {PAYMENT_LABELS[payment] || 'A combinar'}</p>
             </div>
             <button onClick={reset} className="mt-6 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">Fazer outro agendamento</button>
           </div>
@@ -322,8 +374,67 @@ export default function BookingModal({ services, onClose }) {
               </div>
             )}
 
-            {/* Passo 4 — Confirmação */}
+            {/* Passo 4 — Pagamento */}
             {step === 4 && (
+              <div>
+                <div className="space-y-3">
+                  {PAYMENTS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setPayment(p.id)}
+                      className={`w-full rounded-2xl border px-5 py-4 text-left flex items-start gap-3 transition ${payment === p.id ? 'border-lavender bg-lavender/10' : 'border-white/10 hover:border-lavender/50 hover:bg-white/5'}`}
+                    >
+                      <span className={`mt-0.5 text-lavender ${payment === p.id ? 'text-lavender-soft' : 'text-lavender/60'}`}>{p.icon}</span>
+                      <span>
+                        <span className="block font-serif text-lg text-lavender-soft">{p.label}</span>
+                        <span className="block text-xs text-plum-200/70">{p.desc}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {payment === 'pix' && pix.pix_key && (
+                  <div className="mt-5 glass rounded-2xl p-5 text-center">
+                    <p className="mb-3 text-xs uppercase tracking-widest text-lavender/70">Escaneie para pagar {brl(service.price)}</p>
+                    <div className="mx-auto inline-block rounded-xl bg-white p-3">
+                      <QRCodeSVG value={pixPayload} size={168} level="M" />
+                    </div>
+                    <p className="mt-3 break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[11px] text-plum-200/80">{pixPayload}</p>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(pixPayload)}
+                      className="mt-2 rounded-full border border-lavender/40 px-4 py-1.5 text-xs text-lavender hover:bg-lavender/10 transition"
+                    >
+                      Copiar código PIX
+                    </button>
+                    <p className="mt-3 text-xs text-plum-200/60">Após pagar, toque em "Finalizar" — a confirmação final é feita pelo WhatsApp. 💜</p>
+                  </div>
+                )}
+                {payment === 'cash' && (
+                  <p className="mt-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-4 text-sm text-plum-200/80">
+                    💵 O pagamento em <strong className="text-lavender-soft">dinheiro</strong> é feito presencialmente no estúdio, no dia do atendimento. Traga o valor exato de {brl(service.price)} se possível.
+                  </p>
+                )}
+                {payment === 'card' && (
+                  <p className="mt-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-4 text-sm text-plum-200/80">
+                    💳 O pagamento no <strong className="text-lavender-soft">cartão (débito ou crédito)</strong> é processado na maquininha presencialmente no estúdio, no dia do atendimento.
+                  </p>
+                )}
+
+                <div className="mt-5 flex justify-between items-center">
+                  <button onClick={() => setStep(3)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button>
+                  <button
+                    onClick={() => setStep(5)}
+                    disabled={!payment}
+                    className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-50"
+                  >
+                    Continuar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Passo 5 — Confirmação */}
+            {step === 5 && (
               <div>
                 <div className="glass rounded-2xl p-5 text-sm text-plum-200/90 space-y-2">
                   <p><span className="text-lavender/70">Serviço:</span> {service.name} ({service.duration_minutes} min)</p>
@@ -333,10 +444,11 @@ export default function BookingModal({ services, onClose }) {
                   <p><span className="text-lavender/70">WhatsApp:</span> {whatsapp}</p>
                   {notes && <p><span className="text-lavender/70">Observações:</span> {notes}</p>}
                   <div className="divider-fade my-2" />
+                  <p><span className="text-lavender/70">Pagamento:</span> {PAYMENT_LABELS[payment] || 'A combinar'}</p>
                   <p className="text-gradient font-serif text-xl">{brl(service.price)}</p>
                 </div>
                 <div className="mt-5 flex justify-between items-center">
-                  <button onClick={() => setStep(3)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button>
+                  <button onClick={() => setStep(4)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button>
                   <button
                     onClick={submit}
                     disabled={submitting}
