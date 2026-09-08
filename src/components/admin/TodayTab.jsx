@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../integrations/supabase/client';
+import MaintenanceModal from './MaintenanceModal';
 
 const STATUS = {
   pending: { label: 'Pendente', cls: 'border-amber-400/40 bg-amber-500/10 text-amber-200' },
@@ -24,6 +25,7 @@ export default function TodayTab() {
   const [expanded, setExpanded] = useState(null); // id com detalhes abertos
   const [history, setHistory] = useState({});
   const [rescheduling, setRescheduling] = useState(null);
+  const [maintaining, setMaintaining] = useState(null);
   const [msg, setMsg] = useState(null);
 
   const load = useCallback(async () => {
@@ -170,9 +172,24 @@ export default function TodayTab() {
               onToggleDetails={() => openDetails(a.id)}
               history={history[a.id] ?? []}
               onReschedule={() => setRescheduling(a)}
+              onMaintenance={() => setMaintaining(a)}
             />
           ))}
         </ul>
+      )}
+
+      {maintaining && (
+        <MaintenanceModal
+          original={maintaining}
+          onClose={() => setMaintaining(null)}
+          onDone={(ok) => {
+            setMaintaining(null);
+            setMsg(ok
+              ? { kind: 'ok', text: 'Manutenção agendada com sucesso! Ela aparecerá na aba Hoje no dia marcado e no Histórico da cliente.' }
+              : { kind: 'error', text: 'Não foi possível agendar a manutenção.' });
+            if (ok) load();
+          }}
+        />
       )}
 
       {rescheduling && (
@@ -190,7 +207,7 @@ export default function TodayTab() {
   );
 }
 
-function TodayCard({ a, busyId, onChangeStatus, expanded, onToggleDetails, history, onReschedule }) {
+function TodayCard({ a, busyId, onChangeStatus, expanded, onToggleDetails, history, onReschedule, onMaintenance }) {
   const st = STATUS[a.status] ?? STATUS.pending;
   const dur = a.services?.duration_minutes ?? 60;
   const isPromo = Boolean(a.promotion_id && a.promotions);
@@ -247,6 +264,9 @@ function TodayCard({ a, busyId, onChangeStatus, expanded, onToggleDetails, histo
         )}
         {a.status !== 'cancelled' && a.status !== 'completed' && (
           <button disabled={busyId === a.id} onClick={onReschedule} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition disabled:opacity-50">Reagendar</button>
+        )}
+        {a.status === 'completed' && (
+          <button disabled={busyId === a.id} onClick={onMaintenance} className="rounded-full border border-lavender/40 bg-lavender/10 px-3 py-1 text-[11px] text-lavender hover:bg-lavender/20 transition disabled:opacity-50">Agendar manutenção</button>
         )}
         {a.status !== 'cancelled' && a.status !== 'completed' && (
           <button disabled={busyId === a.id} onClick={() => onChangeStatus(a.id, 'cancelled')} className="rounded-full border border-red-400/40 bg-red-500/15 px-3 py-1 text-[11px] text-red-200 hover:bg-red-500/25 transition disabled:opacity-50">Cancelar</button>
