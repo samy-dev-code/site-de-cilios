@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Component } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../integrations/supabase/client';
 import { buildPixPayload, buildBookingMessage, openWhatsApp } from '../utils/payment';
@@ -58,6 +58,38 @@ function Stepper({ step }) {
 function fmtBR(iso) {
   const [y, m, d] = iso.split('-').map(Number);
   return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+}
+
+/* Se qualquer erro inesperado acontecer dentro do modal, mostramos uma
+   mensagem limpa com botão de fechar — nunca uma tela preta travada. */
+class BookingErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={this.props.onClose}>
+          <div className="glass max-w-sm rounded-2xl p-8 text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-red-400/40 bg-red-500/10 text-2xl">😔</div>
+            <p className="mt-4 font-serif text-2xl text-gradient">Ops! Algo deu errado</p>
+            <p className="mt-3 text-sm text-plum-200/80">Não foi possível abrir o agendamento. Por favor, tente novamente.</p>
+            <button
+              onClick={this.props.onClose}
+              className="mt-6 rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2.5 text-sm font-medium text-white transition hover:brightness-110"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default function BookingModal({ services, loading = false, error = null, onClose }) {
@@ -142,9 +174,10 @@ export default function BookingModal({ services, loading = false, error = null, 
       const label = `${hh}:${mm}`;
       const start = m, end = m + total;
       const conflict = takenSlots.some((a) => {
+        if (!a || typeof a.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
         const [ah, am] = a.appointment_time.split(':').map(Number);
-        const aStart = ah * 60 + am;
-        const aDur = a.services?.duration_minutes ?? 60;
+        const aStart = (ah || 0) * 60 + (am || 0);
+        const aDur = Number(a.services?.duration_minutes) || 60;
         return start < aStart + aDur && aStart < end;
       });
       out.push({ label, conflict });
@@ -187,9 +220,10 @@ export default function BookingModal({ services, loading = false, error = null, 
       const start = sh * 60 + sm;
       const end = start + service.duration_minutes;
       const overlap = (conflicts ?? []).some((a) => {
+        if (!a || typeof a.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
         const [ah, am] = a.appointment_time.split(':').map(Number);
-        const aStart = ah * 60 + am;
-        const aDur = a.services?.duration_minutes ?? 60;
+        const aStart = (ah || 0) * 60 + (am || 0);
+        const aDur = Number(a.services?.duration_minutes) || 60;
         return start < aStart + aDur && aStart < end;
       });
       if (overlap) {
@@ -231,6 +265,7 @@ export default function BookingModal({ services, loading = false, error = null, 
   }
 
   return (
+    <BookingErrorBoundary onClose={onClose}>
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#0a0308]/85 p-0 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
       <div
         className="glass rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 sm:p-8 animate-fade-up"
@@ -523,5 +558,6 @@ export default function BookingModal({ services, loading = false, error = null, 
         )}
       </div>
     </div>
+    </BookingErrorBoundary>
   );
 }
