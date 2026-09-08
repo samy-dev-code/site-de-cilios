@@ -8,6 +8,8 @@ import ServiceCard from './components/ServiceCard';
 import TestimonialCard from './components/TestimonialCard';
 import Gallery from './components/Gallery';
 import BookingModal from './components/BookingModal';
+import Scene3DBackground from './components/Scene3DBackground';
+import { Reveal, Parallax } from './components/Reveal';
 
 function Loader() {
   return (
@@ -21,11 +23,15 @@ function Section({ id, eyebrow, title, children }) {
   return (
     <section id={id} className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
       <div className="text-center mb-10">
+        <Reveal>
         <p className="text-xs uppercase tracking-[0.35em] text-lavender/70">{eyebrow}</p>
         <h2 className="mt-3 font-serif text-4xl sm:text-5xl text-gradient">{title}</h2>
         <div className="divider-fade mt-6 mx-auto max-w-xs" />
+        </Reveal>
       </div>
+      <Reveal delay={0.15}>
       {children}
+      </Reveal>
     </section>
   );
 }
@@ -46,6 +52,7 @@ function SiteHome() {
 
   return (
     <div className="min-h-screen bg-[#0a0308]">
+      <Scene3DBackground />
       {/* Navbar */}
       <header className="sticky top-0 z-50 glass border-x-0 border-t-0">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
@@ -65,7 +72,10 @@ function SiteHome() {
       </header>
 
       {/* Hero + Banners */}
-      <BannerCarousel banners={banners.data} />
+      <Reveal>
+        <BannerCarousel banners={banners.data} />
+      </Reveal>
+      <Parallax strength={24}>
       <div className="relative mx-auto max-w-4xl px-4 -mt-16 pb-8 text-center z-10">
         <span className="inline-block rounded-full border border-lavender/30 bg-lavender/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-lavender animate-fade-up">
           High-end lash studio
@@ -84,6 +94,7 @@ function SiteHome() {
           Agendar meu horário ✦
         </button>
       </div>
+      </Parallax>
 
       {/* Serviços */}
       <Section id="servicos" eyebrow="Nossos serviços" title="Técnicas de cílios">

@@ -1,6 +1,14 @@
+import TiltCard from './TiltCard';
+
 export default function ServiceCard({ service }) {
   return (
-    <article className="glass glass-hover rounded-2xl overflow-hidden flex flex-col">
+    <TiltCard className="h-full">
+      <article className="glass glass-hover rounded-2xl overflow-hidden flex flex-col h-full relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500"
+          style={{ background: 'radial-gradient(circle at var(--glow-x,50%) var(--glow-y,50%), rgba(168,85,247,0.18), transparent 60%)' }}
+        />
       <div className="h-44 w-full overflow-hidden bg-gradient-to-br from-plum-800 to-black flex items-center justify-center">
         {service.image_url ? (
           <img src={service.image_url} alt={service.name} className="h-full w-full object-cover" />
@@ -25,5 +33,6 @@ export default function ServiceCard({ service }) {
         </div>
       </div>
     </article>
+    </TiltCard>
   );
 }
