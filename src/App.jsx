@@ -238,7 +238,7 @@ function SiteHome() {
         </div>
         <div className="relative z-10 mx-auto max-w-4xl px-4 py-24 sm:py-32 text-center">
             <span className="animate-fade-up inline-block rounded-full border border-plum-400/30 bg-plum-600/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-plum-300">
-              High-end lash studio
+              Realce o seu olhar ✦
             </span>
             <h1 className="animate-fade-up mt-5 font-serif text-5xl sm:text-6xl md:text-7xl text-gradient drop-shadow-[0_0_30px_rgba(168,85,247,0.35)]">
               Realce o seu olhar
