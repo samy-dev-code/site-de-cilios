@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import AdminPage from './pages/AdminPage.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
@@ -148,7 +148,14 @@ function SiteHeader({ onSchedule, scrolled }) {
 }
 
 function SiteHome() {
-  const banners = useFetch('banners', { filters: [['active', 'eq', true]], order: { col: 'sort_order' } });
+  const banners = useFetch('banners', { order: { col: 'sort_order' } });
+  const publishedBanners = useMemo(() => {
+    const now = Date.now();
+    return asArray(banners.data)
+      .filter((b) => b.active && !b.archived)
+      .filter((b) => !(b.start_at && new Date(b.start_at).getTime() > now))
+      .filter((b) => !(b.no_expiration === false && b.end_at && new Date(b.end_at).getTime() < now));
+  }, [banners.data]);
   const services = useFetch('services', {
     columns: '*, categories(name, slug)',
     filters: [['active', 'eq', true], ['archived', 'eq', false]],
@@ -251,17 +258,8 @@ function SiteHome() {
         </Parallax>
       </section>
 
-      {/* Banner promocional */}
-      <div className="relative z-10 mx-auto max-w-4xl px-4 pb-8">
-        <Reveal delay={0.1}>
-          <img
-            src="/banner-promocional.jpeg"
-            alt="Promoção — Traga sua amiga! Cílios lindos com desconto especial"
-            loading="lazy"
-            className="mx-auto w-full rounded-2xl border border-plum-500/20 shadow-2xl shadow-plum-700/25"
-          />
-        </Reveal>
-      </div>
+      {/* Banners promocionais dinâmicos (painel admin) */}
+      {banners.error ? null : <BannerCarousel banners={publishedBanners} />}
 
       {/* Serviços */}
       <Section id="servicos" eyebrow="Nossos serviços" title="Técnicas de cílios">
