@@ -102,8 +102,13 @@ export default function BookingModal({ services, loading = false, error = null, 
   const [notes, setNotes] = useState('');
   const [hours, setHours] = useState([]);
   const [blocked, setBlocked] = useState([]);
-  const [takenSlots, setTakenSlots] = useState({});
+  const [takenSlots, setTakenSlots] = useState([]);
   const [checking, setChecking] = useState(false);
+
+  // Normalização segura: garante que valores vindos do Supabase sejam sempre arrays
+  const asArray = (value) => (Array.isArray(value) ? value : []);
+  // A prop `services` também pode chegar como undefined/objeto durante o carregamento
+  const serviceList = asArray(services);
   const [payment, setPayment] = useState(null);
   const [pix, setPix] = useState({ pix_key: '', pix_holder_name: '', pix_city: '' });
   const [hoursError, setHoursError] = useState(null);
@@ -126,8 +131,8 @@ export default function BookingModal({ services, loading = false, error = null, 
       supabase.from('blocked_dates').select('blocked_date, reason').gte('blocked_date', toISO(new Date())),
     ]);
     if (h.error) setHoursError(h.error.message);
-    if (h.data) setHours(h.data);
-    if (b.data) setBlocked(b.data);
+    setHours(asArray(h.data));
+    setBlocked(asArray(b.data));
     const s = await supabase.from('settings').select('key, value').in('key', ['pix_key', 'pix_holder_name', 'pix_city']);
     if (s.data) setPix(Object.fromEntries(s.data.map((r) => [r.key, r.value])));
   };
@@ -152,7 +157,7 @@ export default function BookingModal({ services, loading = false, error = null, 
           setTakenSlots([]);
           return;
         }
-        setTakenSlots(data ?? []);
+        setTakenSlots(asArray(data));
       })
       .catch(() => {
         if (mounted) {
@@ -183,7 +188,7 @@ export default function BookingModal({ services, loading = false, error = null, 
       const mm = String(m % 60).padStart(2, '0');
       const label = `${hh}:${mm}`;
       const start = m, end = m + total;
-      const conflict = takenSlots.some((a) => {
+      const conflict = asArray(takenSlots).some((a) => {
         if (!a || typeof a.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
         const [ah, am] = a.appointment_time.split(':').map(Number);
         const aStart = (ah || 0) * 60 + (am || 0);
@@ -207,7 +212,7 @@ export default function BookingModal({ services, loading = false, error = null, 
     return cells;
   }, [cursor]);
 
-  const blockedMap = useMemo(() => Object.fromEntries(blocked.map((b) => [b.blocked_date, b.reason])), [blocked]);
+  const blockedMap = useMemo(() => Object.fromEntries(asArray(blocked).map((b) => [b.blocked_date, b.reason])), [blocked]);
 
   const canContinue = [!!service, !!date, !!time && !checking, name.trim().length >= 3 && whatsapp.replace(/\D/g, '').length >= 10, !!payment, true][step];
 
@@ -229,7 +234,7 @@ export default function BookingModal({ services, loading = false, error = null, 
       const [sh, sm] = time.split(':').map(Number);
       const start = sh * 60 + sm;
       const end = start + service.duration_minutes;
-      const overlap = (conflicts ?? []).some((a) => {
+      const overlap = asArray(conflicts).some((a) => {
         if (!a || typeof a.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
         const [ah, am] = a.appointment_time.split(':').map(Number);
         const aStart = (ah || 0) * 60 + (am || 0);
@@ -331,8 +336,8 @@ export default function BookingModal({ services, loading = false, error = null, 
             {/* Passo 0 — Serviço */}
             {step === 0 && (
               <div className="space-y-3">
-                {services.length === 0 && <p className="text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento.</p>}
-                {services.map((s) => (
+                {serviceList.length === 0 && <p className="text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento.</p>}
+                {serviceList.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => { setService(s); setStep(1); }}
