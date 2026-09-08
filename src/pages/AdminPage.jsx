@@ -36,6 +36,7 @@ function Login({ onLogin }) {
     <div className="min-h-screen flex items-center justify-center px-4">
       <form onSubmit={submit} className="glass w-full max-w-md rounded-3xl p-8 animate-fade-up">
         <p className="text-center text-xs uppercase tracking-[0.35em] text-lavender/70">Painel exclusivo</p>
+        <img src="/logo-mari-lash.jpeg" alt="Mari Lash VIP" className="mx-auto mt-4 h-20 w-20 rounded-full object-cover ring-2 ring-lavender/30" />
         <h1 className="mt-2 text-center font-serif text-4xl text-gradient">Mari Lash Designer</h1>
         <p className="mt-2 text-center text-sm text-plum-200/70">Entre com suas credenciais para gerenciar o estúdio.</p>
         <div className="mt-8 space-y-4">
@@ -112,7 +113,10 @@ export default function AdminPage() {
         <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-lavender/70">Painel administrativo</p>
-            <h1 className="font-serif text-3xl text-gradient">Mari Lash Designer</h1>
+            <div className="flex items-center gap-3">
+              <img src="/logo-mari-lash.jpeg" alt="Mari Lash VIP" className="h-11 w-11 rounded-full object-cover ring-2 ring-lavender/30 shadow-lg shadow-plum-600/30" />
+              <h1 className="font-serif text-3xl text-gradient">Mari Lash Designer</h1>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/" className="rounded-full border border-white/10 px-4 py-2 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">Ver site</Link>

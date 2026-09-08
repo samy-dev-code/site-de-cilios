@@ -50,13 +50,24 @@ function SiteHome() {
     return () => supabase.removeChannel(ch);
   }, []);
 
+  // Fecha o modal de agendamento com ESC e garante tela responsiva
+  useEffect(() => {
+    if (!scheduleOpen) return;
+    const onKey = (e) => e.key === 'Escape' && setScheduleOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [scheduleOpen]);
+
   return (
     <div className="min-h-screen bg-[#0a0308]">
       <Scene3DBackground />
       {/* Navbar */}
       <header className="sticky top-0 z-50 glass border-x-0 border-t-0">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <a href="#" className="font-serif text-2xl text-gradient">Mari Lash Designer</a>
+          <a href="#" className="flex items-center gap-3">
+            <img src="/logo-mari-lash.jpeg" alt="Mari Lash VIP" className="h-10 w-10 rounded-full object-cover ring-1 ring-lavender/40 shadow-lg shadow-plum-600/30" />
+            <span className="font-serif text-2xl text-gradient">Mari Lash Designer</span>
+          </a>
           <div className="hidden md:flex items-center gap-8 text-sm tracking-wide text-plum-200/90">
             <a href="#servicos" className="hover:text-lavender transition-colors">Serviços</a>
             <a href="#galeria" className="hover:text-lavender transition-colors">Galeria</a>
@@ -87,6 +98,13 @@ function SiteHome() {
           Extensão de cílios com técnica refinada, atendimento exclusivo e um ambiente
           pensado para você se sentir única.
         </p>
+        <Reveal delay={0.1}>
+          <img
+            src="/banner-promocional.jpeg"
+            alt="Promoção — Traga sua amiga! Cílios lindos com desconto especial"
+            className="mt-8 mx-auto w-full max-w-3xl rounded-2xl border border-lavender/20 shadow-2xl shadow-plum-600/25"
+          />
+        </Reveal>
         <button
           onClick={() => setScheduleOpen(true)}
           className="mt-8 rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3.5 text-base font-medium text-white shadow-xl shadow-plum-600/40 transition hover:brightness-110 hover:scale-[1.02]"
@@ -109,6 +127,7 @@ function SiteHome() {
 
       {/* Galeria */}
       <Section id="galeria" eyebrow="Portfólio" title="Antes & Depois">
+        {/* Galeria — fotos reais das clientes */}
         <Gallery />
       </Section>
 

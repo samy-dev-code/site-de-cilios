@@ -74,23 +74,33 @@ export default function BookingModal({ services, onClose }) {
   const [checking, setChecking] = useState(false);
   const [payment, setPayment] = useState(null);
   const [pix, setPix] = useState({ pix_key: '', pix_holder_name: '', pix_city: '' });
+  const [hoursError, setHoursError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
 
-  // Horários de funcionamento e folgas
+  // Trava o scroll do fundo enquanto o modal está aberto
   useEffect(() => {
-    (async () => {
-      const [h, b] = await Promise.all([
-        supabase.from('business_hours').select('*'),
-        supabase.from('blocked_dates').select('blocked_date, reason').gte('blocked_date', toISO(new Date())),
-      ]);
-      if (h.data) setHours(h.data);
-      if (b.data) setBlocked(b.data);
-      const s = await supabase.from('settings').select('key, value').in('key', ['pix_key', 'pix_holder_name', 'pix_city']);
-      if (s.data) setPix(Object.fromEntries(s.data.map((r) => [r.key, r.value])));
-    })();
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
   }, []);
+
+  // Horários de funcionamento e folgas
+  const loadHours = async () => {
+    setHoursError(null);
+    const [h, b] = await Promise.all([
+      supabase.from('business_hours').select('*'),
+      supabase.from('blocked_dates').select('blocked_date, reason').gte('blocked_date', toISO(new Date())),
+    ]);
+    if (h.error) setHoursError(h.error.message);
+    if (h.data) setHours(h.data);
+    if (b.data) setBlocked(b.data);
+    const s = await supabase.from('settings').select('key, value').in('key', ['pix_key', 'pix_holder_name', 'pix_city']);
+    if (s.data) setPix(Object.fromEntries(s.data.map((r) => [r.key, r.value])));
+  };
+
+  useEffect(() => { loadHours(); }, []);
 
   // Agenda do dia selecionado (validação de conflito em tempo real)
   useEffect(() => {
@@ -213,7 +223,7 @@ export default function BookingModal({ services, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#0a0308]/85 p-0 sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
       <div
         className="glass rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 sm:p-8 animate-fade-up"
         onClick={(e) => e.stopPropagation()}
@@ -281,6 +291,12 @@ export default function BookingModal({ services, onClose }) {
                 <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-plum-300/60 mb-2">
                   {WEEKDAYS.map((w) => <span key={w}>{w.slice(0, 3)}</span>)}
                 </div>
+                {hoursError && (
+                  <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    <span>Não conseguimos carregar os horários de atendimento.</span>
+                    <button onClick={loadHours} className="shrink-0 rounded-full border border-red-300/40 px-3 py-1 text-xs hover:bg-red-400/10 transition">Tentar novamente</button>
+                  </div>
+                )}
                 <div className="grid grid-cols-7 gap-1">
                   {days.map((iso, i) => {
                     if (!iso) return <span key={`e${i}`} />;
