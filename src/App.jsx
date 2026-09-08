@@ -12,10 +12,16 @@ import Scene3DBackground from './components/Scene3DBackground';
 import LashHero3D from './components/LashHero3D';
 import { Reveal, Parallax } from './components/Reveal';
 
+const NAV_LINKS = [
+  { href: '#servicos', label: 'Serviços' },
+  { href: '#galeria', label: 'Galeria' },
+  { href: '#depoimentos', label: 'Depoimentos' },
+];
+
 function Loader() {
   return (
     <div className="flex justify-center py-16">
-      <span className="h-8 w-8 animate-spin rounded-full border-2 border-lavender/30 border-t-lavender" />
+      <span className="h-8 w-8 animate-spin rounded-full border-2 border-plum-500/30 border-t-plum-400" />
     </div>
   );
 }
@@ -25,15 +31,110 @@ function Section({ id, eyebrow, title, children }) {
     <section id={id} className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
       <div className="text-center mb-10">
         <Reveal>
-        <p className="text-xs uppercase tracking-[0.35em] text-lavender/70">{eyebrow}</p>
-        <h2 className="mt-3 font-serif text-4xl sm:text-5xl text-gradient">{title}</h2>
-        <div className="divider-fade mt-6 mx-auto max-w-xs" />
+          <p className="text-xs uppercase tracking-[0.35em] text-plum-300/80">{eyebrow}</p>
+          <h2 className="mt-3 font-serif text-4xl sm:text-5xl text-gradient">{title}</h2>
+          <div className="divider-fade mt-6 mx-auto max-w-xs" />
         </Reveal>
       </div>
-      <Reveal delay={0.15}>
-      {children}
-      </Reveal>
+      <Reveal delay={0.15}>{children}</Reveal>
     </section>
+  );
+}
+
+function SiteHeader({ onSchedule, scrolled }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e) => e.key === 'Escape' && setMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
+  return (
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'border-b border-plum-500/15 bg-[#050308]/85 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl'
+          : 'border-b border-transparent bg-[#050308]/45 backdrop-blur-md'
+      }`}
+    >
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
+        <a href="#" className="flex items-center gap-3" aria-label="Mari Lash Designer — início">
+          <img
+            src="/logo-mari-lash.jpeg"
+            alt=""
+            className="h-10 w-10 rounded-full object-cover ring-1 ring-plum-400/40 shadow-lg shadow-plum-600/30"
+          />
+          <span className="font-serif text-xl sm:text-2xl text-gradient">Mari Lash Designer</span>
+        </a>
+
+        {/* Navegação desktop */}
+        <div className="hidden md:flex items-center gap-8 text-sm tracking-wide text-plum-200/90">
+          {NAV_LINKS.map((l) => (
+            <a key={l.href} href={l.href} className="transition-colors hover:text-plum-300">
+              {l.label}
+            </a>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onSchedule}
+            className="btn-lux hidden sm:inline-flex rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-5 py-2 text-sm font-medium text-white shadow-lg shadow-plum-600/30"
+          >
+            Agendar
+          </button>
+
+          {/* Hamburger mobile */}
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+            className="md:hidden flex h-10 w-10 items-center justify-center rounded-full border border-plum-500/20 bg-plum-900/40 text-plum-200 transition hover:border-plum-400/40"
+          >
+            <span className="relative block h-4 w-5">
+              <span
+                className={`absolute left-0 block h-px w-5 bg-current transition-all duration-300 ${menuOpen ? 'top-1/2 rotate-45' : 'top-0.5'}`}
+              />
+              <span
+                className={`absolute left-0 top-1/2 block h-px w-5 -translate-y-1/2 bg-current transition-all duration-200 ${menuOpen ? 'opacity-0' : 'opacity-100'}`}
+              />
+              <span
+                className={`absolute left-0 block h-px w-5 bg-current transition-all duration-300 ${menuOpen ? 'top-1/2 -rotate-45' : 'bottom-0.5'}`}
+              />
+            </span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Menu mobile */}
+      <div
+        className={`md:hidden overflow-hidden transition-all duration-300 ${menuOpen ? 'max-h-72 border-t border-plum-500/10' : 'max-h-0'}`}
+      >
+        <div className="flex flex-col gap-1 bg-[#050308]/95 px-6 py-4 backdrop-blur-xl">
+          {NAV_LINKS.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              onClick={() => setMenuOpen(false)}
+              className="rounded-xl px-3 py-3 text-plum-200/90 transition hover:bg-plum-800/40 hover:text-plum-300"
+            >
+              {l.label}
+            </a>
+          ))}
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              onSchedule();
+            }}
+            className="btn-lux mt-2 rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/30"
+          >
+            Agendar meu horário
+          </button>
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -42,6 +143,7 @@ function SiteHome() {
   const services = useFetch('services', { filters: [['active', 'eq', true]], order: { col: 'sort_order' } });
   const testimonials = useFetch('testimonials', { filters: [['approved', 'eq', true]], order: { col: 'sort_order' } });
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const ch = supabase
@@ -59,59 +161,58 @@ function SiteHome() {
     return () => window.removeEventListener('keydown', onKey);
   }, [scheduleOpen]);
 
+  // Header sólido ao rolar
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#0a0308]">
+    <div className="bg-ambient min-h-screen overflow-x-clip">
+      {/* Grid tecnológico sutil no topo */}
+      <div aria-hidden className="bg-grid-tech pointer-events-none absolute inset-x-0 top-0 z-0 h-[80vh]" />
+
       {/* Canvases 3D pausados enquanto o modal está aberto — evita tela preta/travada */}
       {!scheduleOpen && <Scene3DBackground />}
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 glass border-x-0 border-t-0">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <a href="#" className="flex items-center gap-3">
-            <img src="/logo-mari-lash.jpeg" alt="Mari Lash VIP" className="h-10 w-10 rounded-full object-cover ring-1 ring-lavender/40 shadow-lg shadow-plum-600/30" />
-            <span className="font-serif text-2xl text-gradient">Mari Lash Designer</span>
-          </a>
-          <div className="hidden md:flex items-center gap-8 text-sm tracking-wide text-plum-200/90">
-            <a href="#servicos" className="hover:text-lavender transition-colors">Serviços</a>
-            <a href="#galeria" className="hover:text-lavender transition-colors">Galeria</a>
-            <a href="#depoimentos" className="hover:text-lavender transition-colors">Depoimentos</a>
-          </div>
-          <button
-            onClick={() => setScheduleOpen(true)}
-            className="btn-lux rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-5 py-2 text-sm font-medium text-white shadow-lg shadow-plum-600/30 transition hover:brightness-110"
-          >
-            Agendar
-          </button>
-        </nav>
-      </header>
 
-      {/* Hero + Banners */}
-      <Reveal>
-        <BannerCarousel banners={banners.data} />
-      </Reveal>
+      <SiteHeader onSchedule={() => setScheduleOpen(true)} scrolled={scrolled} />
+
       {/* Hero — canvas 3D de cílios como peça central */}
       <section className="relative overflow-hidden">
-        {scheduleOpen ? null : <LashHero3D />}
-        <Parallax strength={24}>
-        <div className="relative z-10 mx-auto max-w-4xl px-4 py-24 sm:py-32 text-center">
-          <span className="inline-block rounded-full border border-lavender/30 bg-lavender/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-lavender animate-fade-up">
-            High-end lash studio
-          </span>
-          <h1 className="mt-5 font-serif text-5xl sm:text-6xl md:text-7xl text-gradient animate-fade-up drop-shadow-[0_0_30px_rgba(168,85,247,0.35)]">
-            Realce o seu olhar
-          </h1>
-          <p className="mt-4 text-lg text-plum-200/90 max-w-2xl mx-auto animate-fade-up">
-            Extensão de cílios com técnica refinada, atendimento exclusivo e um ambiente
-            pensado para você se sentir única.
-          </p>
-          <div className="mt-9 animate-fade-up">
-            <button
-              onClick={() => setScheduleOpen(true)}
-              className="btn-lux rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3.5 text-base font-medium text-white shadow-xl shadow-plum-600/40 transition hover:brightness-110 hover:scale-[1.02]"
-            >
-              Agendar meu horário ✦
-            </button>
-          </div>
+        {!scheduleOpen && <LashHero3D />}
+        {/* Iluminação radial roxa */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="glow-radial absolute left-1/2 top-1/4 h-[60vh] w-[90vw] -translate-x-1/2" />
         </div>
+        <Parallax strength={24}>
+          <div className="relative z-10 mx-auto max-w-4xl px-4 py-24 sm:py-32 text-center">
+            <span className="animate-fade-up inline-block rounded-full border border-plum-400/30 bg-plum-600/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-plum-300">
+              High-end lash studio
+            </span>
+            <h1 className="animate-fade-up mt-5 font-serif text-5xl sm:text-6xl md:text-7xl text-gradient drop-shadow-[0_0_30px_rgba(168,85,247,0.35)]">
+              Realce o seu olhar
+            </h1>
+            <p className="animate-fade-up mx-auto mt-4 max-w-2xl text-lg text-plum-200/80">
+              Extensão de cílios com técnica refinada, atendimento exclusivo e um ambiente
+              pensado para você se sentir única.
+            </p>
+            <div className="animate-fade-up mt-9 flex flex-wrap items-center justify-center gap-4">
+              <button
+                onClick={() => setScheduleOpen(true)}
+                className="btn-lux rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-8 py-3.5 text-base font-medium text-white shadow-xl shadow-plum-600/40"
+              >
+                Agendar meu horário ✦
+              </button>
+              <a
+                href="#servicos"
+                className="rounded-full border border-plum-500/25 bg-plum-900/30 px-8 py-3.5 text-base font-medium text-plum-200 transition hover:border-plum-400/50 hover:bg-plum-800/40 hover:text-plum-300"
+              >
+                Ver serviços
+              </a>
+            </div>
+          </div>
         </Parallax>
       </section>
 
@@ -121,7 +222,8 @@ function SiteHome() {
           <img
             src="/banner-promocional.jpeg"
             alt="Promoção — Traga sua amiga! Cílios lindos com desconto especial"
-            className="mx-auto w-full rounded-2xl border border-lavender/20 shadow-2xl shadow-plum-600/25"
+            loading="lazy"
+            className="mx-auto w-full rounded-2xl border border-plum-500/20 shadow-2xl shadow-plum-700/25"
           />
         </Reveal>
       </div>
@@ -157,18 +259,19 @@ function SiteHome() {
       {/* CTA final */}
       <section className="mx-auto max-w-6xl px-4 pb-24">
         <div className="glass rounded-3xl px-8 py-14 text-center">
-          <h2 className="font-serif text-3xl sm:text-4xl text-gradient">Pronta para o seu novo olhar?</h2>
-          <p className="mt-3 text-plum-200/85">Agende agora e garanta o seu horário com a Mari.</p>
+          <div aria-hidden className="glow-radial pointer-events-none absolute inset-0" />
+          <h2 className="relative font-serif text-3xl sm:text-4xl text-gradient">Pronta para o seu novo olhar?</h2>
+          <p className="relative mt-3 text-plum-200/75">Agende agora e garanta o seu horário com a Mari.</p>
           <button
             onClick={() => setScheduleOpen(true)}
-            className="mt-8 rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-10 py-4 font-medium text-white shadow-xl shadow-plum-600/40 transition hover:brightness-110"
+            className="btn-lux relative mt-8 rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-10 py-4 font-medium text-white shadow-xl shadow-plum-600/40"
           >
             Quero agendar
           </button>
         </div>
       </section>
 
-      <footer className="border-t border-lavender/10 py-8 text-center text-sm text-plum-300/60">
+      <footer className="border-t border-plum-500/10 py-8 text-center text-sm text-plum-300/50">
         © {new Date().getFullYear()} Mari Lash Designer · Todos os direitos reservados
       </footer>
 
