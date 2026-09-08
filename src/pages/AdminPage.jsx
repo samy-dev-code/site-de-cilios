@@ -1,22 +1,26 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
 import AgendaTab from '../components/admin/AgendaTab';
 import ServicesTab from '../components/admin/ServicesTab';
 import BannersTab from '../components/admin/BannersTab';
 import HoursTab from '../components/admin/HoursTab';
+import CategoriesTab from '../components/admin/CategoriesTab';
+import HistoryTab from '../components/admin/HistoryTab';
+import DashboardTab from '../components/admin/DashboardTab';
 
-const AuthCtx = createContext(null);
-export const useAdmin = () => useContext(AuthCtx);
-
-const TABS = [
-  { id: 'agenda', label: 'Agenda' },
-  { id: 'services', label: 'Serviços' },
-  { id: 'banners', label: 'Banners' },
-  { id: 'hours', label: 'Horários' },
+const NAV = [
+  { to: '/admin', label: 'Dashboard', end: true },
+  { to: '/admin/servicos', label: 'Serviços' },
+  { to: '/admin/categorias', label: 'Categorias' },
+  { to: '/admin/agendamentos', label: 'Agendamentos' },
+  { to: '/admin/banners', label: 'Banners' },
+  { to: '/admin/horarios', label: 'Horários' },
+  { to: '/admin/historico', label: 'Histórico' },
+  { to: '/admin/configuracoes', label: 'Configurações' },
 ];
 
-function Login({ onLogin }) {
+function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,7 +33,6 @@ function Login({ onLogin }) {
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (err) setError('E-mail ou senha incorretos. Tente novamente.');
-    else onLogin();
   }
 
   return (
@@ -70,33 +73,35 @@ function Login({ onLogin }) {
   );
 }
 
-function Nav({ tab, setTab }) {
+function SettingsTab() {
   return (
-    <nav className="flex flex-wrap gap-2">
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => setTab(t.id)}
-          className={`rounded-full px-5 py-2 text-sm transition ${tab === t.id ? 'bg-gradient-to-r from-plum-600 to-plum-400 text-white shadow-lg shadow-plum-600/30' : 'border border-white/10 text-plum-200/80 hover:border-lavender/50 hover:text-lavender'}`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </nav>
+    <div className="glass rounded-3xl p-8 text-sm text-plum-200/80 space-y-4">
+      <h3 className="font-serif text-xl text-lavender-soft">Configurações</h3>
+      <p>Esta seção concentra as preferências gerais do estúdio (dados de contato, pagamentos e integrações).</p>
+      <ul className="list-disc space-y-1.5 pl-5 text-plum-200/70">
+        <li>Horários de funcionamento são gerenciados na aba <strong className="text-lavender">Horários</strong>.</li>
+        <li>Banners promocionais são gerenciados na aba <strong className="text-lavender">Banners</strong>.</li>
+        <li>O catálogo de serviços é gerenciado em <strong className="text-lavender">Serviços</strong>.</li>
+      </ul>
+      <p className="text-xs text-plum-300/50">Sessão autenticada via Supabase Auth. Nenhuma credencial é armazenada no navegador.</p>
+    </div>
   );
 }
 
 export default function AdminPage() {
-  const navigate = useNavigate();
   const { pathname } = useLocation();
-  const tab = TABS.some((t) => pathname.endsWith(t.id)) ? TABS.find((t) => pathname.endsWith(t.id)).id : 'agenda';
   const [session, setSession] = useState(undefined); // undefined = carregando
+  const [auditTick, setAuditTick] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session) window.scrollTo({ top: 0 });
+  }, [pathname, session]);
 
   if (session === undefined) {
     return (
@@ -105,37 +110,59 @@ export default function AdminPage() {
       </div>
     );
   }
-  if (!session) return <Login onLogin={() => navigate('/admin/agenda')} />;
+  if (!session) return <Login />;
 
   return (
-    <AuthCtx.Provider value={{ session }}>
-      <div className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 py-10">
-        <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-lavender/70">Painel administrativo</p>
-            <div className="flex items-center gap-3">
-              <img src="/logo-mari-lash.jpeg" alt="Mari Lash VIP" className="h-11 w-11 rounded-full object-cover ring-2 ring-lavender/30 shadow-lg shadow-plum-600/30" />
-              <h1 className="font-serif text-3xl text-gradient">Mari Lash Designer</h1>
-            </div>
-          </div>
+    <div className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <p className="text-xs uppercase tracking-[0.35em] text-lavender/70">Painel administrativo</p>
           <div className="flex items-center gap-3">
-            <Link to="/" className="rounded-full border border-white/10 px-4 py-2 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">Ver site</Link>
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="rounded-full border border-red-400/30 px-4 py-2 text-xs text-red-200/90 hover:bg-red-500/10 transition"
-            >
-              Sair
-            </button>
+            <img src="/logo-mari-lash.jpeg" alt="Mari Lash VIP" className="h-11 w-11 rounded-full object-cover ring-2 ring-lavender/30 shadow-lg shadow-plum-600/30" />
+            <h1 className="font-serif text-3xl text-gradient">Mari Lash Designer</h1>
           </div>
-        </header>
-        <Nav tab={tab} setTab={(t) => navigate(`/admin/${t}`)} />
-        <main className="mt-8 animate-fade-up">
-          {tab === 'agenda' && <AgendaTab />}
-          {tab === 'services' && <ServicesTab />}
-          {tab === 'banners' && <BannersTab />}
-          {tab === 'hours' && <HoursTab />}
-        </main>
-      </div>
-    </AuthCtx.Provider>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to="/" className="rounded-full border border-white/10 px-4 py-2 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">Ver site</Link>
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="rounded-full border border-red-400/30 px-4 py-2 text-xs text-red-200/90 hover:bg-red-500/10 transition"
+          >
+            Sair
+          </button>
+        </div>
+      </header>
+
+      <nav className="flex flex-wrap gap-2">
+        {NAV.map((t) => {
+          const active = t.end ? pathname === '/admin' : pathname.startsWith(t.to);
+          return (
+            <Link
+              key={t.to}
+              to={t.to}
+              className={`rounded-full px-4 sm:px-5 py-2 text-sm transition ${active ? 'bg-gradient-to-r from-plum-600 to-plum-400 text-white shadow-lg shadow-plum-600/30' : 'border border-white/10 text-plum-200/80 hover:border-lavender/50 hover:text-lavender'}`}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <main key={pathname} className="mt-8 animate-fade-up">
+        <Routes>
+          <Route index element={<DashboardTab key={auditTick} />} />
+          <Route path="servicos" element={<ServicesTab onAudit={() => setAuditTick((t) => t + 1)} />} />
+          <Route path="servicos/historico" element={<Navigate to="/admin/historico" replace />} />
+          <Route path="categorias" element={<CategoriesTab />} />
+          <Route path="agendamentos" element={<AgendaTab />} />
+          <Route path="agenda" element={<Navigate to="/admin/agendamentos" replace />} />
+          <Route path="banners" element={<BannersTab />} />
+          <Route path="horarios" element={<HoursTab />} />
+          <Route path="historico" element={<HistoryTab />} />
+          <Route path="configuracoes" element={<SettingsTab />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </main>
+    </div>
   );
 }
