@@ -143,18 +143,42 @@ function SiteHeader({ onSchedule, scrolled }) {
 
 function SiteHome() {
   const banners = useFetch('banners', { filters: [['active', 'eq', true]], order: { col: 'sort_order' } });
-  const services = useFetch('services', { filters: [['active', 'eq', true]], order: { col: 'sort_order' } });
+  const services = useFetch('services', {
+    columns: '*, categories(name, slug)',
+    filters: [['active', 'eq', true], ['archived', 'eq', false]],
+    order: { col: 'display_order' },
+  });
+  const categories = useFetch('categories', { filters: [['active', 'eq', true]], order: { col: 'display_order' } });
   const testimonials = useFetch('testimonials', { filters: [['approved', 'eq', true]], order: { col: 'sort_order' } });
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [presetService, setPresetService] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+
+  // Pré-seleciona o serviço escolhido no catálogo ("Agendar" do card)
+  const scheduleService = (svc) => {
+    setPresetService(svc ?? null);
+    setScheduleOpen(true);
+  };
 
   useEffect(() => {
     const ch = supabase
-      .channel('banners-realtime')
+      .channel('public-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'banners' }, () => window.location.reload())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, () => window.location.reload())
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, []);
+
+  // Filtro de categoria escolhido pelo visitante
+  const [categoryFilter, setCategoryFilter] = useState(null);
+  const allServices = asArray(services.data);
+  const visibleServices = categoryFilter
+    ? allServices.filter((s) => s.categories?.slug === categoryFilter)
+    : allServices;
+  const featured = allServices.filter((s) => s.featured);
+  const activeCategories = asArray(categories.data).filter((c) =>
+    allServices.some((s) => s.categories?.slug === c.slug)
+  );
 
   // Fecha o modal de agendamento com ESC e garante tela responsiva
   useEffect(() => {
@@ -243,9 +267,47 @@ function SiteHome() {
         ) : asArray(services.data).length === 0 ? (
           <p className="glass rounded-2xl p-8 text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento. 💜</p>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {asArray(services.data).map((s) => <ServiceCard key={s.id} service={s} />)}
-          </div>
+          <>
+            {/* Área especial de destaques */}
+            {featured.length > 0 && (
+              <div className="mb-10">
+                <p className="mb-4 text-xs uppercase tracking-[0.3em] text-lavender/70 text-center">✦ Mais procurados</p>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {featured.map((s) => <ServiceCard key={s.id} service={s} onSchedule={scheduleService} />)}
+                </div>
+                <div className="divider-fade mt-10 mx-auto max-w-xs" />
+              </div>
+            )}
+
+            {/* Filtro por categoria */}
+            {activeCategories.length > 1 && (
+              <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => setCategoryFilter(null)}
+                  className={`rounded-full px-4 py-1.5 text-xs uppercase tracking-[0.15em] transition ${!categoryFilter ? 'bg-gradient-to-r from-plum-600 to-lavender text-white shadow-lg shadow-plum-600/30' : 'border border-plum-500/25 text-plum-200/80 hover:border-plum-400/50 hover:bg-plum-800/40'}`}
+                >
+                  Todos
+                </button>
+                {activeCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setCategoryFilter(c.slug)}
+                    className={`rounded-full px-4 py-1.5 text-xs uppercase tracking-[0.15em] transition ${categoryFilter === c.slug ? 'bg-gradient-to-r from-plum-600 to-lavender text-white shadow-lg shadow-plum-600/30' : 'border border-plum-500/25 text-plum-200/80 hover:border-plum-400/50 hover:bg-plum-800/40'}`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {visibleServices.length === 0 ? (
+              <p className="glass rounded-2xl p-8 text-center text-sm text-plum-200/70">Nenhum serviço nesta categoria no momento. 💜</p>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {visibleServices.map((s) => <ServiceCard key={s.id} service={s} onSchedule={scheduleService} />)}
+              </div>
+            )}
+          </>
         )}
       </Section>
 
@@ -294,7 +356,8 @@ function SiteHome() {
           services={services.data}
           loading={services.loading}
           error={services.error}
-          onClose={() => setScheduleOpen(false)}
+          presetService={presetService}
+          onClose={() => { setScheduleOpen(false); setPresetService(null); }}
         />
       )}
     </div>

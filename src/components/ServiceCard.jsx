@@ -1,6 +1,13 @@
 import TiltCard from './TiltCard';
 
-export default function ServiceCard({ service }) {
+const brl = (v) => `R$ ${Number(v ?? 0).toFixed(2).replace('.', ',')}`;
+
+export default function ServiceCard({ service, onSchedule }) {
+  const s = service ?? {};
+  const hasPromo = s.promotional_price != null && Number(s.promotional_price) < Number(s.price);
+  const categoryName = s.categories?.name ?? null;
+  const canSchedule = typeof onSchedule === 'function';
+
   return (
     <TiltCard className="h-full">
       <article className="glass glass-hover rounded-[20px] overflow-hidden flex flex-col h-full relative group">
@@ -11,10 +18,10 @@ export default function ServiceCard({ service }) {
           style={{ background: 'radial-gradient(circle at var(--glow-x,50%) var(--glow-y,50%), rgba(168,85,247,0.20), transparent 62%)' }}
         />
         <div className="relative h-44 w-full overflow-hidden bg-gradient-to-br from-plum-800 via-plum-900 to-black flex items-center justify-center">
-          {service?.image_url ? (
+          {s.image_url ? (
             <img
-              src={service.image_url}
-              alt={service?.name ?? 'Serviço'}
+              src={s.image_url}
+              alt={s.name ?? 'Serviço'}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             />
@@ -24,21 +31,50 @@ export default function ServiceCard({ service }) {
               <path d="M15 50 Q35 22 60 42 Q80 56 105 40" opacity="0.6" />
             </svg>
           )}
+          {/* Selos sobre a imagem */}
+          {s.featured && (
+            <span className="absolute top-3 left-3 rounded-full bg-gradient-to-r from-plum-600 to-lavender px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-plum-600/40">
+              ✦ Destaque
+            </span>
+          )}
+          {hasPromo && (
+            <span className="absolute top-3 right-3 rounded-full bg-black/60 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-emerald-300 ring-1 ring-emerald-400/40">
+              Promoção
+            </span>
+          )}
           {/* Brilho inferior na imagem */}
           <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/70 to-transparent" />
         </div>
         <div className="relative p-6 flex flex-col flex-1">
-          <h3 className="font-serif text-2xl text-lavender-soft">{service?.name ?? 'Serviço'}</h3>
-          <p className="mt-2 text-sm text-plum-200/75 leading-relaxed flex-1">{service?.description}</p>
+          {categoryName && (
+            <p className="text-[0.6rem] uppercase tracking-[0.25em] text-plum-300/70">{categoryName}</p>
+          )}
+          <h3 className="mt-1 font-serif text-2xl text-lavender-soft">{s.name ?? 'Serviço'}</h3>
+          <p className="mt-2 text-sm text-plum-200/75 leading-relaxed flex-1">{s.description}</p>
           <div className="divider-fade my-4" />
           <div className="flex items-end justify-between">
-            <span className="font-serif text-2xl text-gradient">
-              R$ {Number(service?.price ?? 0).toFixed(2).replace('.', ',')}
-            </span>
+            <div>
+              {hasPromo ? (
+                <>
+                  <span className="block text-xs text-plum-300/60 line-through">{brl(s.price)}</span>
+                  <span className="font-serif text-2xl text-gradient">{brl(s.promotional_price)}</span>
+                </>
+              ) : (
+                <span className="font-serif text-2xl text-gradient">{brl(s.price)}</span>
+              )}
+            </div>
             <span className="text-[0.65rem] uppercase tracking-[0.2em] text-plum-300/70">
-              {service?.duration_minutes} min
+              {s.duration_minutes} min
             </span>
           </div>
+          {canSchedule && (
+            <button
+              onClick={() => onSchedule(s)}
+              className="btn-lux mt-5 w-full rounded-full bg-gradient-to-r from-plum-700 to-plum-500 py-2.5 text-sm font-medium text-white shadow-lg shadow-plum-600/30 transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-lavender/60"
+            >
+              Agendar
+            </button>
+          )}
         </div>
       </article>
     </TiltCard>

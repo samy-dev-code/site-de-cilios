@@ -92,9 +92,9 @@ class BookingErrorBoundary extends Component {
   }
 }
 
-export default function BookingModal({ services, loading = false, error = null, onClose }) {
-  const [step, setStep] = useState(0);
-  const [service, setService] = useState(null);
+export default function BookingModal({ services, loading = false, error = null, presetService = null, onClose }) {
+  const [step, setStep] = useState(presetService ? 1 : 0);
+  const [service, setService] = useState(presetService);
   const [date, setDate] = useState(null);
   const [time, setTime] = useState(null);
   const [name, setName] = useState('');
