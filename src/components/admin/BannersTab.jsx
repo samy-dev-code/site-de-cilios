@@ -259,7 +259,7 @@ export default function BannersTab() {
               className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70" />
           </div>
           {/* Botão */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Texto do botão</label>
               <input value={form.button_text} onChange={(e) => setForm({ ...form, button_text: e.target.value })} placeholder="Agendar agora"
@@ -283,7 +283,7 @@ export default function BannersTab() {
                     Imagem {kind === 'desktop' ? 'desktop' : 'mobile (opcional)'}
                   </label>
                   <input
-                    type="file" accept="image/jpeg,image/png,image/webp"
+                    type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
                     onChange={(e) => {
                       const f = e.target.files?.[0] ?? null;
                       if (f && f.size > MAX_SIZE) { notify('Imagem muito grande (máx. 4MB).', 'error'); e.target.value = ''; return; }
@@ -309,7 +309,7 @@ export default function BannersTab() {
           {/* Enquadramento da imagem */}
           <div className="rounded-2xl border border-plum-500/15 bg-plum-900/20 p-4 space-y-3">
             <p className="text-xs uppercase tracking-widest text-lavender/70">Enquadramento da imagem</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="mb-1.5 block text-[11px] text-plum-200/60">Modo de encaixe</label>
                 <select value={form.object_fit} onChange={(e) => setForm({ ...form, object_fit: e.target.value })}
@@ -351,7 +351,7 @@ export default function BannersTab() {
             </p>
           </div>
           {/* Posição / duração */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Posição do conteúdo</label>
               <select value={form.content_position} onChange={(e) => setForm({ ...form, content_position: e.target.value })}
@@ -371,7 +371,7 @@ export default function BannersTab() {
             <input type="checkbox" checked={form.no_expiration} onChange={(e) => setForm({ ...form, no_expiration: e.target.checked })} className="accent-[#c9a7e8]" />
             Banner sem data de expiração
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Início (opcional)</label>
               <input type="datetime-local" value={form.start_at} onChange={(e) => setForm({ ...form, start_at: e.target.value })}
@@ -438,12 +438,12 @@ export default function BannersTab() {
                   <div className="flex flex-col items-end gap-2">
                     <span className={`rounded-full border px-3 py-0.5 text-[11px] ${st.cls}`}>{st.label}</span>
                     <div className="flex flex-wrap justify-end gap-1.5 text-[11px]">
-                      <button onClick={() => patch(b, { active: !b.active }, b.active ? 'Banner desativado.' : 'Banner ativado!')} className="text-plum-200/80 hover:text-lavender transition">{b.active ? 'Desativar' : 'Ativar'}</button>
-                      <button onClick={() => setPreviewOpen(b)} className="text-plum-200/80 hover:text-lavender transition">Preview</button>
-                      <button onClick={() => startEdit(b)} className="text-plum-200/80 hover:text-lavender transition">Editar</button>
-                      <button onClick={() => duplicate(b)} className="text-plum-200/80 hover:text-lavender transition">Duplicar</button>
-                      <button onClick={() => patch(b, { archived: true }, 'Banner arquivado.')} className="text-plum-200/80 hover:text-lavender transition">Arquivar</button>
-                      <button onClick={() => remove(b)} className="text-red-300/60 hover:text-red-300 transition">Excluir</button>
+                      <button onClick={() => patch(b, { active: !b.active }, b.active ? 'Banner desativado.' : 'Banner ativado!')} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">{b.active ? 'Desativar' : 'Ativar'}</button>
+                      <button onClick={() => setPreviewOpen(b)} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">Preview</button>
+                      <button onClick={() => startEdit(b)} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">Editar</button>
+                      <button onClick={() => duplicate(b)} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">Duplicar</button>
+                      <button onClick={() => patch(b, { archived: true }, 'Banner arquivado.')} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">Arquivar</button>
+                      <button onClick={() => remove(b)} className="min-h-[36px] px-2 text-red-300/60 hover:text-red-300 transition">Excluir</button>
                     </div>
                   </div>
                 </li>

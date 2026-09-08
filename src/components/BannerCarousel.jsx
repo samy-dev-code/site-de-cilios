@@ -56,7 +56,7 @@ function BannerSlide({ banner, active, isFirst }) {
   return (
     <div
       aria-hidden={!active}
-      className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+      className={`absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none ${
         active ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
     >
@@ -98,12 +98,12 @@ function BannerSlide({ banner, active, isFirst }) {
             </span>
           )}
           {banner.title && (
-            <h2 className={`font-serif text-gradient leading-tight drop-shadow-[0_2px_18px_rgba(0,0,0,0.85)] ${TITLE_SIZES[banner.title_size] || TITLE_SIZES.normal}`}>
+            <h2 className={`font-serif text-gradient leading-tight break-words drop-shadow-[0_2px_18px_rgba(0,0,0,0.85)] ${TITLE_SIZES[banner.title_size] || TITLE_SIZES.normal}`}>
               {banner.title}
             </h2>
           )}
           {banner.subtitle && (
-            <p className="mt-4 text-sm text-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)] sm:mt-5 sm:text-lg">
+            <p className="mt-4 break-words text-sm text-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)] sm:mt-5 sm:text-lg">
               {banner.subtitle}
             </p>
           )}
@@ -133,8 +133,17 @@ export default function BannerCarousel({ banners }) {
   const [paused, setPaused] = useState(false);
   const resumeTimer = useRef(null);
   const touchX = useRef(null);
+  const touchY = useRef(null);
+  const touchLocked = useRef(null); // 'h' | 'v'
 
   useEffect(() => { if (index >= count) setIndex(0); }, [count, index]);
+
+  // Pausa o auto-play quando a aba está em segundo plano (economiza bateria/dados)
+  useEffect(() => {
+    const onVis = () => setPaused(document.hidden ? true : false);
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   // Auto-play respeitando a duração de cada banner
   useEffect(() => {
@@ -154,14 +163,33 @@ export default function BannerCarousel({ banners }) {
 
   useEffect(() => () => clearTimeout(resumeTimer.current), []);
 
-  const onTouchStart = (e) => { touchX.current = e.touches[0].clientX; setPaused(true); };
+  const onTouchStart = (e) => {
+    touchX.current = e.touches[0].clientX;
+    touchY.current = e.touches[0].clientY;
+    touchLocked.current = null;
+    setPaused(true);
+  };
+  const onTouchMove = (e) => {
+    if (touchX.current == null || touchLocked.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchX.current);
+    const dy = Math.abs(e.touches[0].clientY - touchY.current);
+    // Bloqueia a direção no primeiro movimento: horizontal navega, vertical rola a página
+    if (dx > 8 || dy > 8) touchLocked.current = dx > dy ? 'h' : 'v';
+    if (touchLocked.current === 'v') {
+      touchX.current = null;
+      clearTimeout(resumeTimer.current);
+      resumeTimer.current = setTimeout(() => setPaused(false), 4000);
+    }
+  };
   const onTouchEnd = (e) => {
-    if (touchX.current == null) return;
-    const dx = e.changedTouches[0].clientX - touchX.current;
-    if (Math.abs(dx) > 40) interact((index + (dx < 0 ? 1 : -1) + count) % count);
+    if (touchX.current != null && touchLocked.current === 'h') {
+      const dx = e.changedTouches[0].clientX - touchX.current;
+      if (Math.abs(dx) > 40) interact((index + (dx < 0 ? 1 : -1) + count) % count);
+      else clearTimeout(resumeTimer.current), (resumeTimer.current = setTimeout(() => setPaused(false), 4000));
+    }
     touchX.current = null;
-    clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => setPaused(false), 8000);
+    touchY.current = null;
+    touchLocked.current = null;
   };
 
   if (count === 0) return null;
@@ -175,6 +203,7 @@ export default function BannerCarousel({ banners }) {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
       {/* Faixa luminosa premium acima do banner */}
