@@ -177,14 +177,22 @@ export default function BookingModal({ services, loading = false, error = null, 
     setSubmitting(true);
     setSubmitError(null);
     try {
-      // Revalidação final de conflito no banco antes de inserir
+      // Revalidação final de conflito no banco antes de inserir (por sobreposição de horário)
       const { data: conflicts } = await supabase
         .from('appointments')
-        .select('id, services(duration_minutes)')
+        .select('id, appointment_time, services(duration_minutes)')
         .eq('appointment_date', date)
-        .eq('appointment_time', time)
         .in('status', ['pending', 'confirmed']);
-      if (conflicts && conflicts.length > 0) {
+      const [sh, sm] = time.split(':').map(Number);
+      const start = sh * 60 + sm;
+      const end = start + service.duration_minutes;
+      const overlap = (conflicts ?? []).some((a) => {
+        const [ah, am] = a.appointment_time.split(':').map(Number);
+        const aStart = ah * 60 + am;
+        const aDur = a.services?.duration_minutes ?? 60;
+        return start < aStart + aDur && aStart < end;
+      });
+      if (overlap) {
         setSubmitError('Ops! Este horário acabou de ser preenchido por outra pessoa. Escolha outro, por favor.');
         setSubmitting(false);
         return;
@@ -399,8 +407,15 @@ export default function BookingModal({ services, loading = false, error = null, 
                     className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
                   />
                 </div>
-                <div className="flex justify-between pt-2">
+                <div className="flex justify-between items-center pt-2">
                   <button onClick={() => setStep(2)} className="text-sm text-plum-300/70 hover:text-lavender transition">← Voltar</button>
+                  <button
+                    onClick={() => setStep(4)}
+                    disabled={!canContinue}
+                    className="rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-50"
+                  >
+                    Ir para pagamento
+                  </button>
                 </div>
               </div>
             )}
@@ -497,7 +512,7 @@ export default function BookingModal({ services, loading = false, error = null, 
             )}
             {(step === 1 || step === 2) && date && (
               <button
-                onClick={() => setStep(3)}
+                onClick={() => setStep(step + 1)}
                 disabled={!canContinue}
                 className="mt-6 w-full rounded-full bg-gradient-to-r from-plum-600 to-plum-400 py-3 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-50"
               >
