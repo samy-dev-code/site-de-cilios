@@ -17,6 +17,7 @@ import { InstagramIcon } from './components/icons';
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
 const TermsOfUse = lazy(() => import('./pages/TermsOfUse.jsx'));
+const MediaKitPage = lazy(() => import('./pages/MediaKitPage.jsx'));
 
 const NAV_LINKS = [
   { href: '#servicos', label: 'Serviços' },
@@ -391,8 +392,10 @@ export default function App() {
       <Routes>
         <Route path="/admin/*" element={<AdminPage />} />
         <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
+        <Route path="/divulgacao" element={<MediaKitPage />} />
         <Route path="/termos-de-uso" element={<TermsOfUse />} />
         <Route path="*" element={<SiteHome />} />
+
       </Routes>
     </Suspense>
   );
