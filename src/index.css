@@ -1,1 +1,76 @@
 @import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Jost:wght@300;400;500;600&display=swap');
+
+@theme {
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Jost", sans-serif;
+
+  --color-plum-950: #14040f;
+  --color-plum-900: #22091c;
+  --color-plum-800: #381033;
+  --color-plum-700: #4d1a45;
+  --color-plum-600: #6b2460;
+  --color-plum-500: #8e3180;
+  --color-plum-400: #b45aa6;
+  --color-plum-300: #d18cc8;
+  --color-plum-200: #e9c5e5;
+  --color-lavender: #c9a7e8;
+  --color-lavender-soft: #efe6fa;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0a0308;
+  color: #f3eef5;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism leve */
+.glass {
+  background: linear-gradient(160deg, rgba(142, 49, 128, 0.14), rgba(20, 4, 15, 0.55));
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(201, 167, 232, 0.16);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.glass-hover {
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.glass-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(201, 167, 232, 0.4);
+  box-shadow: 0 16px 48px rgba(142, 49, 128, 0.28);
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, #e9c5e5, #c9a7e8 55%, #8e3180);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.divider-fade {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 167, 232, 0.5), transparent);
+}
+
+::selection {
+  background: #6b2460;
+  color: #efe6fa;
+}
+
+/* Scrollbar sutil */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: #0a0308; }
+::-webkit-scrollbar-thumb { background: #4d1a45; border-radius: 8px; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.7s ease both; }
