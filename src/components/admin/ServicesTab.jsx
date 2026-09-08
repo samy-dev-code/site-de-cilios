@@ -11,10 +11,14 @@ export default function ServicesTab() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY);
 
+  const asArray = (value) => (Array.isArray(value) ? value : []);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('services').select('*').order('sort_order');
-    setItems(data ?? []);
+    const { data, error: err } = await supabase.from('services').select('*').order('sort_order');
+    if (err) setError(err.message);
+    else setError(null);
+    setItems(asArray(data));
     setLoading(false);
   }, []);
 

@@ -18,6 +18,9 @@ const NAV_LINKS = [
   { href: '#depoimentos', label: 'Depoimentos' },
 ];
 
+// Normalização segura: qualquer dado do Supabase usado com .map/.filter vira array
+const asArray = (value) => (Array.isArray(value) ? value : []);
+
 function Loader() {
   return (
     <div className="flex justify-center py-16">
@@ -232,9 +235,16 @@ function SiteHome() {
       <Section id="servicos" eyebrow="Nossos serviços" title="Técnicas de cílios">
         {services.loading ? (
           <Loader />
+        ) : services.error ? (
+          <div className="glass rounded-2xl p-8 text-center">
+            <p className="text-sm text-red-200">Não conseguimos carregar os serviços agora.</p>
+            <button onClick={() => window.location.reload()} className="mt-4 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">Tentar novamente</button>
+          </div>
+        ) : asArray(services.data).length === 0 ? (
+          <p className="glass rounded-2xl p-8 text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento. 💜</p>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {services.data.map((s) => <ServiceCard key={s.id} service={s} />)}
+            {asArray(services.data).map((s) => <ServiceCard key={s.id} service={s} />)}
           </div>
         )}
       </Section>
@@ -251,7 +261,7 @@ function SiteHome() {
           <Loader />
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {testimonials.data.map((t) => <TestimonialCard key={t.id} item={t} />)}
+            {asArray(testimonials.data).map((t) => <TestimonialCard key={t.id} item={t} />)}
           </div>
         )}
       </Section>

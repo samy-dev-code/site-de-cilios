@@ -12,14 +12,17 @@ export default function HoursTab() {
   const [msg, setMsg] = useState(null);
   const [newBlock, setNewBlock] = useState({ date: '', reason: '' });
 
+  const asArray = (value) => (Array.isArray(value) ? value : []);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [h, b] = await Promise.all([
       supabase.from('business_hours').select('*').order('weekday'),
       supabase.from('blocked_dates').select('*').gte('blocked_date', toISO(new Date())).order('blocked_date'),
     ]);
-    setHours(h.data ?? []);
-    setBlocked(b.data ?? []);
+    if (h.error || b.error) setMsg({ err: true, text: h.error?.message || b.error?.message || 'Erro ao carregar horários.' });
+    setHours(asArray(h.data));
+    setBlocked(asArray(b.data));
     setLoading(false);
   }, []);
 

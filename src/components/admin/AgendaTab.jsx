@@ -25,14 +25,20 @@ export default function AgendaTab() {
   const [filter, setFilter] = useState('all');
   const [editing, setEditing] = useState(null); // agendamento em remarcação
 
+  const [error, setError] = useState(null);
+
+  const asArray = (value) => (Array.isArray(value) ? value : []);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [a, s] = await Promise.all([
       supabase.from('appointments').select('*, services(name, duration_minutes, price)').order('appointment_date').order('appointment_time'),
       supabase.from('services').select('*').order('sort_order'),
     ]);
-    setItems(a.data ?? []);
-    setServices(s.data ?? []);
+    if (a.error || s.error) setError(a.error?.message || s.error?.message || 'Erro ao carregar a agenda.');
+    else setError(null);
+    setItems(asArray(a.data));
+    setServices(asArray(s.data));
     setLoading(false);
   }, []);
 
@@ -97,6 +103,17 @@ export default function AgendaTab() {
 
   if (loading) {
     return <div className="py-20 text-center"><span className="h-8 w-8 inline-block animate-spin rounded-full border-2 border-lavender/30 border-t-lavender" /></div>;
+  }
+
+  if (error) {
+    return (
+      <div className="glass rounded-3xl p-10 text-center">
+        <p className="text-sm text-red-200">{error}</p>
+        <button onClick={load} className="mt-4 rounded-full border border-lavender/40 px-6 py-2 text-sm text-lavender hover:bg-lavender/10 transition">
+          Tentar novamente
+        </button>
+      </div>
+    );
   }
 
   return (

@@ -11,10 +11,14 @@ export default function BannersTab() {
   const [form, setForm] = useState({ title: '', subtitle: '', link_url: '', active: true, image_url: '' });
   const [file, setFile] = useState(null);
 
+  const asArray = (value) => (Array.isArray(value) ? value : []);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('banners').select('*').order('sort_order');
-    setItems(data ?? []);
+    const { data, error: err } = await supabase.from('banners').select('*').order('sort_order');
+    if (err) setError(err.message);
+    else setError(null);
+    setItems(asArray(data));
     setLoading(false);
   }, []);
 
