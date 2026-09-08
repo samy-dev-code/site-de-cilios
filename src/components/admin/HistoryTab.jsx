@@ -301,7 +301,8 @@ function PriceHistory() {
 
       {error && <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
 
-      <div className="glass rounded-3xl overflow-x-auto">
+      {/* Tabela no desktop, cards no mobile */}
+      <div className="glass rounded-3xl hidden md:block overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead>
             <tr className="border-b border-white/10 text-[11px] uppercase tracking-widest text-lavender/70">
@@ -337,6 +338,34 @@ function PriceHistory() {
           </tbody>
         </table>
       </div>
+
+      <ul className="md:hidden space-y-3">
+        {filtered.map((r) => {
+          const changed = Number(r.old_price) !== Number(r.new_price);
+          return (
+            <li key={r.id} className="glass rounded-2xl p-4 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium text-lavender-soft">{r.services?.name ?? 'Serviço removido'}</p>
+                <p className="text-sm">
+                  {changed && <span className="line-through opacity-50 mr-1.5">{brl(r.old_price)}</span>}
+                  <span className="font-semibold text-emerald-300">{brl(r.new_price)}</span>
+                </p>
+              </div>
+              {r.new_promotional_price != null && (
+                <p className="mt-0.5 text-xs text-plum-200/60">Promoção: {brl(r.old_promotional_price)} → {brl(r.new_promotional_price)}</p>
+              )}
+              <p className="mt-1 text-[11px] text-plum-300/50">
+                {fmtDT(r.created_at)} · {r.user_email ?? 'administrador'}
+              </p>
+            </li>
+          );
+        })}
+        {filtered.length === 0 && (
+          <li className="glass rounded-2xl p-10 text-center text-sm text-plum-200/60">
+            {rows.length === 0 ? 'Nenhuma alteração de preço registrada ainda.' : 'Nenhum registro encontrado com os filtros atuais.'}
+          </li>
+        )}
+      </ul>
     </div>
   );
 }

@@ -88,7 +88,7 @@ export default function DashboardTab() {
     <div className="space-y-6">
       {error && <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
 
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card label="Serviços ativos" value={stats.active} hint={`de ${stats.total} cadastrados`} icon="✦" />
         <Card label="Agendamentos futuros" value={stats.upcoming} hint={stats.pending ? `${stats.pending} pendente(s)` : 'em dia'} icon="📅" />
         <Card label="Destaques na home" value={stats.featured} icon="★" />

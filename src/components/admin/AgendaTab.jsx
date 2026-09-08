@@ -145,10 +145,10 @@ export default function AgendaTab() {
               <span className="font-serif text-xl text-lavender-soft">{MONTHS[cursor.getMonth()]} {cursor.getFullYear()}</span>
               <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="rounded-full border border-white/10 px-3 py-1 text-lavender hover:bg-white/5 transition">→</button>
             </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-plum-300/60 mb-2">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-[9px] sm:text-[11px] text-plum-300/60 mb-2">
               {WEEKDAYS.map((w) => <span key={w}>{w.slice(0, 3)}</span>)}
             </div>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
               {days.map((iso, i) => {
                 if (!iso) return <span key={`e${i}`} />;
                 const list = byDate[iso] ?? [];
@@ -158,12 +158,12 @@ export default function AgendaTab() {
                   <button
                     key={iso}
                     onClick={() => setSelected(iso)}
-                    className={`aspect-square rounded-lg text-sm relative transition ${selected === iso ? 'bg-gradient-to-br from-plum-500 to-lavender text-white font-semibold' : has ? 'bg-lavender/15 text-lavender-soft hover:bg-lavender/25' : 'text-plum-100 hover:bg-white/5'}`}
+                    className={`aspect-square min-h-9 rounded-lg text-xs sm:text-sm relative transition ${selected === iso ? 'bg-gradient-to-br from-plum-500 to-lavender text-white font-semibold' : has ? 'bg-lavender/15 text-lavender-soft hover:bg-lavender/25' : 'text-plum-100 hover:bg-white/5'}`}
                   >
                     {Number(iso.slice(-2))}
-                    {hasPending && !has && <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-amber-300" />}
+                    {hasPending && !has && <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 h-1.5 w-1.5 rounded-full bg-amber-300" />}
                     {has && (
-                      <span className="absolute bottom-1 left-0 right-0 flex justify-center gap-0.5">
+                      <span className="absolute bottom-0.5 sm:bottom-1 left-0 right-0 flex justify-center gap-0.5">
                         {list.slice(0, 3).map((a) => (
                           <span key={a.id} className={`h-1 w-1 rounded-full ${a.status === 'pending' ? 'bg-amber-300' : 'bg-emerald-300'}`} />
                         ))}

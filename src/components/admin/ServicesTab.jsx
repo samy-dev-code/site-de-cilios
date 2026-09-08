@@ -211,7 +211,7 @@ export default function ServicesTab({ onAudit }) {
 
   const chip = (active) =>
     `rounded-full px-3 py-1 text-[11px] transition ${active ? 'border-lavender/50 bg-lavender/10 text-lavender' : 'border-white/10 text-plum-200/70 hover:border-lavender/40'}`;
-  const btn = 'rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition whitespace-nowrap';
+  const btn = 'rounded-full border border-white/10 px-3.5 py-2 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition whitespace-nowrap';
   const inputCls = 'w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition';
   const labelCls = 'mb-1.5 block text-xs uppercase tracking-widest text-lavender/70';
 

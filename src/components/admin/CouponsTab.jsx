@@ -179,7 +179,7 @@ export default function CouponsTab({ onAudit }) {
   const today = new Date().toISOString().slice(0, 10);
   const isExpired = form.end_date && form.end_date < today;
 
-  const btn = 'rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition whitespace-nowrap';
+  const btn = 'rounded-full border border-white/10 px-3.5 py-2 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition whitespace-nowrap';
   const inputCls = 'w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition';
   const labelCls = 'mb-1.5 block text-xs uppercase tracking-widest text-lavender/70';
 
@@ -308,7 +308,7 @@ export default function CouponsTab({ onAudit }) {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-mono text-base font-semibold tracking-widest text-lavender-soft">{c.code}</p>
+                    <p className="font-serif text-lg text-lavender-soft break-all">{c.code}</p>
                     {c.name && <span className="text-xs text-plum-200/60">{c.name}</span>}
                     {c.archived && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-plum-200/70">Arquivado</span>}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] ${c.active ? 'bg-emerald-500/15 text-emerald-200' : 'bg-white/10 text-plum-200/60'}`}>{c.active ? 'Ativo' : 'Inativo'}</span>

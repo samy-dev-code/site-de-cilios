@@ -279,6 +279,10 @@ export default function AdminPage() {
   const { pathname } = useLocation();
   const [session, setSession] = useState(undefined); // undefined = carregando
   const [auditTick, setAuditTick] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Fecha o menu mobile ao trocar de página
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -302,11 +306,25 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 py-10">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-lavender/70">Painel administrativo</p>
-          <div className="flex items-center gap-3">
-            <img src="/logo-mari-lash.jpeg" alt="Mari Lash VIP" className="h-11 w-11 rounded-full object-cover ring-2 ring-lavender/30 shadow-lg shadow-plum-600/30" />
-            <h1 className="font-serif text-3xl text-gradient">Mari Lash Designer</h1>
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Hambúrguer (mobile) */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Abrir menu"
+            className="lg:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 text-lavender-soft hover:border-lavender/50 transition"
+          >
+            <span className="sr-only">Abrir menu</span>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.35em] text-lavender/70">Painel administrativo</p>
+            <div className="flex items-center gap-3">
+              <img src="/logo-mari-lash.jpeg" alt="Mari Lash VIP" className="h-11 w-11 rounded-full object-cover ring-2 ring-lavender/30 shadow-lg shadow-plum-600/30" />
+              <h1 className="font-serif text-2xl sm:text-3xl text-gradient truncate">Mari Lash Designer</h1>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -320,20 +338,61 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <nav className="flex flex-wrap gap-2">
+      {/* Navegação desktop */}
+      <nav className="hidden lg:flex flex-wrap gap-2">
         {NAV.map((t) => {
           const active = t.end ? pathname === '/admin' : pathname.startsWith(t.to);
           return (
             <Link
               key={t.to}
               to={t.to}
-              className={`rounded-full px-4 sm:px-5 py-2 text-sm transition ${active ? 'bg-gradient-to-r from-plum-600 to-plum-400 text-white shadow-lg shadow-plum-600/30' : 'border border-white/10 text-plum-200/80 hover:border-lavender/50 hover:text-lavender'}`}
+              className={`rounded-full px-5 py-2 text-sm transition ${active ? 'bg-gradient-to-r from-plum-600 to-plum-400 text-white shadow-lg shadow-plum-600/30' : 'border border-white/10 text-plum-200/80 hover:border-lavender/50 hover:text-lavender'}`}
             >
               {t.label}
             </Link>
           );
         })}
       </nav>
+
+      {/* Drawer mobile */}
+      {menuOpen && (
+        <div className="lg:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu do painel">
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setMenuOpen(false)}
+            className="absolute inset-0 h-full w-full cursor-default bg-black/70 backdrop-blur-sm"
+          />
+          <nav className="absolute left-0 top-0 h-full w-72 max-w-[85vw] overflow-y-auto border-r border-white/10 bg-[#17101f] p-5 shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.35em] text-lavender/70">Menu</span>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Fechar menu"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-plum-200/80 hover:text-lavender transition"
+              >
+                ✕
+              </button>
+            </div>
+            <ul className="space-y-1.5">
+              {NAV.map((t) => {
+                const active = t.end ? pathname === '/admin' : pathname.startsWith(t.to);
+                return (
+                  <li key={t.to}>
+                    <Link
+                      to={t.to}
+                      className={`block rounded-xl px-4 py-3 text-sm transition ${active ? 'bg-gradient-to-r from-plum-600 to-plum-400 text-white shadow-lg shadow-plum-600/30' : 'border border-white/10 text-plum-200/80 hover:border-lavender/50 hover:text-lavender'}`}
+                    >
+                      {t.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
+      )}
 
       <main key={pathname} className="mt-8 animate-fade-up">
         <Routes>
