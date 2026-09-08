@@ -13,9 +13,6 @@
     "react-dom": "^19.1.0",
     "@supabase/supabase-js": "^2.45.0",
     "react-router-dom": "^7.6.0",
-    "three": "^0.174.0",
-    "@react-three/fiber": "^9.1.0",
-    "framer-motion": "^12.9.0",
     "qrcode.react": "^4.2.0"
   },
   "devDependencies": {

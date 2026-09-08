@@ -1,30 +1,46 @@
-import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
 
-/* Revela o conteúdo com fade + slide suave quando entra na viewport */
-export function Reveal({ children, delay = 0, y = 36, className = '' }) {
+/**
+ * Revela o conteúdo com fade + slide quando entra na viewport.
+ * Implementado com IntersectionObserver (sem bibliotecas de animação).
+ * Respeita prefers-reduced-motion.
+ */
+export function Reveal({ children, delay = 0, y = 24, className = '' }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+      setVisible(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: '-60px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   return (
-    <motion.div
+    <div
+      ref={ref}
       className={className}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'none' : `translateY(${y}px)`,
+        transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
+        willChange: visible ? 'auto' : 'opacity, transform',
+      }}
     >
       {children}
-    </motion.div>
-  );
-}
-
-/* Parallax suave no scroll: o conteúdo sobe mais devagar que a página */
-export function Parallax({ children, strength = 40, className = '' }) {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
-  const y = useTransform(scrollYProgress, [0, 1], [strength, -strength]);
-
-  return (
-    <motion.div ref={ref} style={{ y }} className={className}>
-      {children}
-    </motion.div>
+    </div>
   );
 }

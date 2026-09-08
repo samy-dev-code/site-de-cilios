@@ -12,36 +12,61 @@ const FALLBACKS = {
 
 /**
  * Carrega as configurações do estúdio (tabela `settings`) — fonte de verdade do painel /admin.
+ * Cache compartilhado em nível de módulo: vários componentes na mesma página
+ * disparam UMA única consulta ao Supabase (evita requests duplicados).
  * Nunca quebra: se o Supabase falhar, usa os valores de fallback.
  */
-export function useSettings() {
-  const [settings, setSettings] = useState(FALLBACKS);
-  const [loading, setLoading] = useState(true);
+let cachedSettings = null;
+let pendingPromise = null;
+const subscribers = new Set();
 
-  useEffect(() => {
-    let alive = true;
-    supabase
+function fetchSettings() {
+  if (cachedSettings) {
+    return Promise.resolve(cachedSettings);
+  }
+  if (!pendingPromise) {
+    pendingPromise = supabase
       .from('settings')
       .select('key, value')
       .then(({ data, error }) => {
-        if (!alive) return;
-        if (!error && data) {
-          const map = { ...FALLBACKS };
-          for (const row of data) {
-            if (row?.key && typeof row.value === 'string' && row.value.trim() !== '') {
-              map[row.key] = row.value.trim();
-            }
+        pendingPromise = null;
+        if (error || !data) return cachedSettings ?? FALLBACKS;
+        const map = { ...FALLBACKS };
+        for (const row of data) {
+          if (row?.key && typeof row.value === 'string' && row.value.trim() !== '') {
+            map[row.key] = row.value.trim();
           }
-          setSettings(map);
         }
-        setLoading(false);
+        cachedSettings = map;
+        subscribers.forEach((fn) => fn(map));
+        return map;
+      })
+      .catch(() => {
+        pendingPromise = null;
+        return FALLBACKS;
       });
+  }
+  return pendingPromise;
+}
+
+export function useSettings() {
+  const [settings, setSettings] = useState(cachedSettings ?? FALLBACKS);
+
+  useEffect(() => {
+    let alive = true;
+    const fn = (map) => { if (alive) setSettings(map); };
+    subscribers.add(fn);
+    fetchSettings().then((map) => {
+      if (alive) setSettings(map);
+      subscribers.delete(fn);
+    });
     return () => {
       alive = false;
+      subscribers.delete(fn);
     };
   }, []);
 
-  return { settings, loading };
+  return { settings, loading: settings === FALLBACKS };
 }
 
 /** Instagram da empresa como URL absoluta (aceita @user, user ou URL completa). */

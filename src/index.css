@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Jost:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@300;400;500&display=swap');
 
 /* ─────────────────────────────────────────────
    DESIGN TOKENS — Preto + Roxo Escuro + Roxo Neon
@@ -77,7 +77,7 @@ body {
 .glass {
   position: relative;
   background: linear-gradient(160deg, rgba(109, 25, 168, 0.10), rgba(10, 6, 16, 0.55));
-  backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(10px) saturate(1.1);
   border: 1px solid var(--border-purple);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(220, 194, 245, 0.06);
 }
@@ -144,7 +144,6 @@ body {
   border-radius: 20px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
-  transform-style: preserve-3d;
 }
 .card-float:hover {
   transform: translateY(-4px);

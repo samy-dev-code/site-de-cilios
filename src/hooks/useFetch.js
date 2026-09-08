@@ -9,6 +9,8 @@ export function useFetch(table, { columns = '*', filters = [], order = null, lim
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
+    setError(null);
     (async () => {
       try {
         let query = supabase.from(table).select(columns);
@@ -19,14 +21,14 @@ export function useFetch(table, { columns = '*', filters = [], order = null, lim
         if (err) throw err;
         if (mounted) setData(rows ?? []);
       } catch (e) {
-        if (mounted) setError(e.message);
+        if (mounted) setError(e?.message ?? 'Erro ao carregar dados.');
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table]);
+  }, [table, columns, JSON.stringify(filters), JSON.stringify(order), limit]);
 
   return { data, loading, error };
 }

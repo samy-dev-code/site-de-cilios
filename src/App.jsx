@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
-import AdminPage from './pages/AdminPage.jsx';
-import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
-import TermsOfUse from './pages/TermsOfUse.jsx';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import SiteFooter from './components/SiteFooter';
 import WhatsAppFloat from './components/WhatsAppFloat';
 import { useFetch } from './hooks/useFetch';
@@ -12,11 +9,14 @@ import ServiceCard from './components/ServiceCard';
 import TestimonialCard from './components/TestimonialCard';
 import Gallery from './components/Gallery';
 import BookingModal from './components/BookingModal';
-import Scene3DBackground from './components/Scene3DBackground';
-import LashHero3D from './components/LashHero3D';
-import { Reveal, Parallax } from './components/Reveal';
+import { Reveal } from './components/Reveal';
 import { useSettings, instagramUrl } from './hooks/useSettings';
 import { InstagramIcon } from './components/icons';
+
+// Code splitting: o visitante da home não baixa o painel admin nem as páginas legais
+const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
+const TermsOfUse = lazy(() => import('./pages/TermsOfUse.jsx'));
 
 const NAV_LINKS = [
   { href: '#servicos', label: 'Serviços' },
@@ -26,6 +26,14 @@ const NAV_LINKS = [
 
 // Normalização segura: qualquer dado do Supabase usado com .map/.filter vira array
 const asArray = (value) => (Array.isArray(value) ? value : []);
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <span className="h-8 w-8 animate-spin rounded-full border-2 border-plum-500/30 border-t-plum-400" />
+    </div>
+  );
+}
 
 function Loader() {
   return (
@@ -213,23 +221,18 @@ function SiteHome() {
 
   return (
     <div className="bg-ambient min-h-screen overflow-x-clip">
-      {/* Grid tecnológico sutil no topo */}
+      {/* Grid tecnológico sutil no topo (CSS puro, sem GPU) */}
       <div aria-hidden className="bg-grid-tech pointer-events-none absolute inset-x-0 top-0 z-0 h-[80vh]" />
-
-      {/* Canvases 3D pausados enquanto o modal está aberto — evita tela preta/travada */}
-      {!scheduleOpen && <Scene3DBackground />}
 
       <SiteHeader onSchedule={() => setScheduleOpen(true)} scrolled={scrolled} />
 
-      {/* Hero — canvas 3D de cílios como peça central */}
+      {/* Hero — tipografia + iluminação em CSS puro (sem WebGL) */}
       <section className="relative overflow-hidden">
-        {!scheduleOpen && <LashHero3D />}
         {/* Iluminação radial roxa */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div className="glow-radial absolute left-1/2 top-1/4 h-[60vh] w-[90vw] -translate-x-1/2" />
         </div>
-        <Parallax strength={24}>
-          <div className="relative z-10 mx-auto max-w-4xl px-4 py-24 sm:py-32 text-center">
+        <div className="relative z-10 mx-auto max-w-4xl px-4 py-24 sm:py-32 text-center">
             <span className="animate-fade-up inline-block rounded-full border border-plum-400/30 bg-plum-600/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-plum-300">
               High-end lash studio
             </span>
@@ -253,9 +256,8 @@ function SiteHome() {
               >
                 Ver serviços
               </a>
-            </div>
           </div>
-        </Parallax>
+        </div>
       </section>
 
       {/* Banner hero full-width — 100vw, fora de qualquer container */}
@@ -378,11 +380,13 @@ function SiteHome() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/admin/*" element={<AdminPage />} />
-      <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
-      <Route path="/termos-de-uso" element={<TermsOfUse />} />
-      <Route path="*" element={<SiteHome />} />
-    </Routes>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route path="/admin/*" element={<AdminPage />} />
+        <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
+        <Route path="/termos-de-uso" element={<TermsOfUse />} />
+        <Route path="*" element={<SiteHome />} />
+      </Routes>
+    </Suspense>
   );
 }

@@ -56,8 +56,8 @@ function BannerSlide({ banner, active, isFirst }) {
   return (
     <div
       aria-hidden={!active}
-      className={`absolute inset-0 transition-all duration-1000 ease-out ${
-        active ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-[1.02]'
+      className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+        active ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
     >
       {desktop ? (
