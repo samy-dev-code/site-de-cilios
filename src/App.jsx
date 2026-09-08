@@ -9,6 +9,7 @@ import TestimonialCard from './components/TestimonialCard';
 import Gallery from './components/Gallery';
 import BookingModal from './components/BookingModal';
 import Scene3DBackground from './components/Scene3DBackground';
+import LashHero3D from './components/LashHero3D';
 import { Reveal, Parallax } from './components/Reveal';
 
 function Loader() {
@@ -86,33 +87,43 @@ function SiteHome() {
       <Reveal>
         <BannerCarousel banners={banners.data} />
       </Reveal>
-      <Parallax strength={24}>
-      <div className="relative mx-auto max-w-4xl px-4 -mt-16 pb-8 text-center z-10">
-        <span className="inline-block rounded-full border border-lavender/30 bg-lavender/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-lavender animate-fade-up">
-          High-end lash studio
-        </span>
-        <h1 className="mt-5 font-serif text-5xl sm:text-6xl md:text-7xl text-gradient animate-fade-up">
-          Realce o seu olhar
-        </h1>
-        <p className="mt-4 text-lg text-plum-200/85 max-w-2xl mx-auto animate-fade-up">
-          Extensão de cílios com técnica refinada, atendimento exclusivo e um ambiente
-          pensado para você se sentir única.
-        </p>
+      {/* Hero — canvas 3D de cílios como peça central */}
+      <section className="relative overflow-hidden">
+        <LashHero3D />
+        <Parallax strength={24}>
+        <div className="relative z-10 mx-auto max-w-4xl px-4 py-24 sm:py-32 text-center">
+          <span className="inline-block rounded-full border border-lavender/30 bg-lavender/10 px-4 py-1 text-xs uppercase tracking-[0.3em] text-lavender animate-fade-up">
+            High-end lash studio
+          </span>
+          <h1 className="mt-5 font-serif text-5xl sm:text-6xl md:text-7xl text-gradient animate-fade-up drop-shadow-[0_0_30px_rgba(168,85,247,0.35)]">
+            Realce o seu olhar
+          </h1>
+          <p className="mt-4 text-lg text-plum-200/90 max-w-2xl mx-auto animate-fade-up">
+            Extensão de cílios com técnica refinada, atendimento exclusivo e um ambiente
+            pensado para você se sentir única.
+          </p>
+          <div className="mt-9 animate-fade-up">
+            <button
+              onClick={() => setScheduleOpen(true)}
+              className="btn-lux rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3.5 text-base font-medium text-white shadow-xl shadow-plum-600/40 transition hover:brightness-110 hover:scale-[1.02]"
+            >
+              Agendar meu horário ✦
+            </button>
+          </div>
+        </div>
+        </Parallax>
+      </section>
+
+      {/* Banner promocional */}
+      <div className="relative z-10 mx-auto max-w-4xl px-4 pb-8">
         <Reveal delay={0.1}>
           <img
             src="/banner-promocional.jpeg"
             alt="Promoção — Traga sua amiga! Cílios lindos com desconto especial"
-            className="mt-8 mx-auto w-full max-w-3xl rounded-2xl border border-lavender/20 shadow-2xl shadow-plum-600/25"
+            className="mx-auto w-full rounded-2xl border border-lavender/20 shadow-2xl shadow-plum-600/25"
           />
         </Reveal>
-        <button
-          onClick={() => setScheduleOpen(true)}
-          className="btn-lux mt-8 rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-8 py-3.5 text-base font-medium text-white shadow-xl shadow-plum-600/40 transition hover:brightness-110 hover:scale-[1.02]"
-        >
-          Agendar meu horário ✦
-        </button>
       </div>
-      </Parallax>
 
       {/* Serviços */}
       <Section id="servicos" eyebrow="Nossos serviços" title="Técnicas de cílios">
