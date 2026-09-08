@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Routes, Route, Link } from 'react-router-dom';
+import AdminPage from './pages/AdminPage.jsx';
 import { useFetch } from './hooks/useFetch';
 import { supabase } from './integrations/supabase/client';
 import BannerCarousel from './components/BannerCarousel';
@@ -28,7 +30,7 @@ function Section({ id, eyebrow, title, children }) {
   );
 }
 
-export default function App() {
+function SiteHome() {
   const banners = useFetch('banners', { filters: [['active', 'eq', true]], order: { col: 'sort_order' } });
   const services = useFetch('services', { filters: [['active', 'eq', true]], order: { col: 'sort_order' } });
   const testimonials = useFetch('testimonials', { filters: [['approved', 'eq', true]], order: { col: 'sort_order' } });
@@ -146,5 +148,14 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/admin/*" element={<AdminPage />} />
+      <Route path="*" element={<SiteHome />} />
+    </Routes>
   );
 }
