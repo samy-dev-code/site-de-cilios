@@ -29,7 +29,7 @@ export default function Gallery() {
           <button
             key={it.src}
             onClick={() => setLightbox(i)}
-            className="group relative overflow-hidden rounded-2xl border border-white/10 focus:outline-none focus:ring-2 focus:ring-lavender/60 transition"
+            className="group relative overflow-hidden rounded-2xl border border-plum-500/20 bg-plum-950 focus:outline-none focus:ring-2 focus:ring-plum-400/60 focus:ring-offset-2 focus:ring-offset-void transition-all duration-300 hover:border-plum-400/50 hover:shadow-[0_16px_48px_rgba(109,25,168,0.3)]"
             aria-label={`Ver foto de ${it.label}`}
           >
             <img

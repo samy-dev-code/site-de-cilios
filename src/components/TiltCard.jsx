@@ -1,12 +1,19 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-/* Card com efeito tilt 3D que acompanha o mouse */
-export default function TiltCard({ children, className = '', maxTilt = 8 }) {
+/* Card com efeito tilt 3D que acompanha o mouse — desativado em touch e reduced-motion */
+export default function TiltCard({ children, className = '', maxTilt = 6 }) {
   const ref = useRef(null);
+  const enabled = useRef(false);
+
+  useEffect(() => {
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    enabled.current = fine && !calm;
+  }, []);
 
   const handleMove = (e) => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !enabled.current) return;
     const rect = el.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width - 0.5;
     const py = (e.clientY - rect.top) / rect.height - 0.5;

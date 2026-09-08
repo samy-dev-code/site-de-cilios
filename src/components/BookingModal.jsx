@@ -13,7 +13,7 @@ const PAYMENTS = [
     label: 'PIX',
     desc: 'Pague agora pelo app do seu banco com o QR Code ao lado.',
     icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 2.1a2.6 2.6 0 0 1 1.85.77l3.7 3.7h-2.6a3.9 3.9 0 0 0-3.9 3.9v.06a3.9 3.9 0 0 1-3.9 3.9H2.87a2.6 2.6 0 0 1 0-3.68L10.15 2.87A2.6 2.6 0 0 1 12 2.1Zm8.9 9.9a1.3 1.3 0 0 1 0 1.84l-7.05 7.05a2.6 2.6 0 0 1-3.68 0l-3.7-3.7h2.6a3.9 3.9 0 0 0 3.9-3.9v-.06a3.9 3.9 0 0 1 3.9-3.9h4.28a1.3 1.3 0 0 1 .92.38ZM2.9 10.55a1.3 1.3 0 0 1-.93-2.21L8.6 1.72a2.6 2.6 0 0 1 .62-.46L2.9 8.58a1.3 1.3 0 0 0 0 1.84l7.05 7.05a2.6 2.6 0 0 0 3.68 0l3.7-3.7h-2.6a3.9 3.9 0 0 1-3.9-3.9v-.06a3.9 3.9 0 0 0-3.9-3.9H2.9Z"/></svg>
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 2.1a2.6 2.6 0 0 1 1.85.77l3.7 3.7h-2.6a3.9 3.9 0 0 0-3.9 3.9v.06a3.9 3.9 0 0 1-3.9 3.9H2.87a2.6 2.6 0 0 1 0-3.68L10.15 2.87A2.6 2.6 0 0 1 12 2.1Zm8.9 9.9a1.3 1.3 0 0 1 0 1.84l-7.05 7.05a2.6 2.6 0 0 1-3.68 0l-3.7-3.7h2.6a3.9 3.9 0 0 0 3.9-3.9v-.06a3.9 3.9 0 0 1 3.9-3.9h4.28a1.3 1.3 0 0 1 .92.38ZM2.9 10.55a1.3 1.3 0 0 1-.93-2.21L8.6 1.72a2.6 2.6 0 0 1 .62-.46L2.9 8.58a1.3 1.3 0 0 0 0 1.84l7.05 7.05a2.6 2.6 0 0 0 3.68 0l3.7-3.7h-2.6a3.9 3.9 0 0 1-3.9-3.9v-.06a3.9 3.9 0 0 0-3.9-3.9H2.9Z" /></svg>
     ),
   },
   {
@@ -21,7 +21,7 @@ const PAYMENTS = [
     label: 'Dinheiro',
     desc: 'Pagamento presencial no estúdio, no dia do atendimento.',
     icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 12h.01M18 12h.01" /></svg>
     ),
   },
   {
@@ -29,7 +29,7 @@ const PAYMENTS = [
     label: 'Cartão (Débito/Crédito)',
     desc: 'Processamento na maquininha presencial no estúdio.',
     icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></svg>
     ),
   },
 ];
@@ -427,34 +427,41 @@ export default function BookingModal({ services, loading = false, error = null, 
             {step === 3 && (
               <div className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Nome completo *</label>
+                  <label htmlFor="bk-name" className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Nome completo *</label>
                   <input
+                    id="bk-name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Seu nome"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
+                    autoComplete="name"
+                    aria-invalid={name.length > 0 && name.trim().length < 3}
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 focus:ring-1 focus:ring-lavender/40 transition"
                   />
                   {name.length > 0 && name.trim().length < 3 && <p className="mt-1 text-xs text-red-300/80">Digite seu nome completo.</p>}
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">WhatsApp *</label>
+                  <label htmlFor="bk-zap" className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">WhatsApp *</label>
                   <input
+                    id="bk-zap"
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
                     placeholder="(11) 99999-9999"
                     inputMode="tel"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
+                    autoComplete="tel"
+                    aria-invalid={whatsapp.length > 0 && whatsapp.replace(/\D/g, '').length < 10}
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 focus:ring-1 focus:ring-lavender/40 transition"
                   />
                   {whatsapp.length > 0 && whatsapp.replace(/\D/g, '').length < 10 && <p className="mt-1 text-xs text-red-300/80">Informe um WhatsApp válido com DDD.</p>}
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Observações (opcional)</label>
+                  <label htmlFor="bk-notes" className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Observações (opcional)</label>
                   <textarea
+                    id="bk-notes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
                     placeholder="Alguma alergia, preferência ou detalhe que a Mari deva saber?"
-                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 focus:ring-1 focus:ring-lavender/40 transition"
                   />
                 </div>
                 <div className="flex justify-between items-center pt-2">

@@ -271,8 +271,12 @@ function SiteHome() {
         </div>
       </section>
 
-      <footer className="border-t border-plum-500/10 py-8 text-center text-sm text-plum-300/50">
-        © {new Date().getFullYear()} Mari Lash Designer · Todos os direitos reservados
+      <footer className="relative border-t border-plum-500/10 py-10">
+        <div aria-hidden className="divider-fade absolute inset-x-0 top-0" />
+        <div className="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-plum-300/50">
+          <p>© {new Date().getFullYear()} Mari Lash Designer · Todos os direitos reservados</p>
+          <p className="tracking-[0.25em] uppercase text-[0.65rem]">High-end lash studio</p>
+        </div>
       </footer>
 
       {scheduleOpen && (
