@@ -238,7 +238,13 @@ function TodayCard({ a, busyId, onChangeStatus, expanded, onToggleDetails, histo
             {a.appointment_time.slice(0, 5)} · {dur} min · {isPromo ? `Promoção: ${a.promotions?.name}` : a.services?.name ?? 'Serviço removido'}
             {isPromo && a.participants_count > 1 && ` · ${a.participants_count} participantes`}
           </p>
-          <p className="text-xs text-plum-200/70">{fmtBRL(a.final_amount)} · {STATUS[a.status]?.label ?? a.status}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-plum-200/70">
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] ${a.appointment_type === 'maintenance' ? 'border-lavender/40 bg-lavender/10 text-lavender' : 'border-white/10 bg-white/5 text-plum-200/70'}`}>
+              {a.appointment_type === 'maintenance' ? 'Manutenção' : 'Serviço'}
+            </span>
+            <span>{fmtBRL(a.final_amount)}</span>
+            <span className="text-plum-300/60">{STATUS[a.status]?.label ?? a.status}</span>
+          </p>
           {isPromo && asArray(a.appointment_participants).length > 0 && (
             <p className="mt-1 text-xs text-plum-200/60">Participantes: {asArray(a.appointment_participants).map((p) => p.name).join(', ')}</p>
           )}

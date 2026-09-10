@@ -69,7 +69,7 @@ function ClientHistory() {
     setError(null);
     const { data, error: err } = await supabase
       .from('appointments')
-      .select('*, services(name, duration_minutes), promotions(name), related_appointment_id, related:appointments!related_appointment_id(id, appointment_date, appointment_time, services(name))')
+      .select('*, services(name, duration_minutes), promotions(name), appointment_type, related_appointment_id, related:appointments!related_appointment_id(id, appointment_date, appointment_time, appointment_type, services(name))')
       .order('appointment_date', { ascending: false })
       .order('appointment_time', { ascending: false })
       .limit(500);
@@ -161,9 +161,15 @@ function ClientHistory() {
               <div>
                 <p className="font-medium text-lavender-soft">{a.client_name} <span className="text-xs text-plum-200/50">{a.client_whatsapp}</span></p>
                 <p className="text-xs text-plum-200/70 mt-0.5">
-                  {fmtDate(a.appointment_date)} às {fmtTime(a.appointment_time)} · {a.services?.duration_minutes ?? 60} min · {a.promotions ? `Promoção: ${a.promotions.name}` : a.services?.name ?? 'Serviço removido'}
+                  {fmtDate(a.appointment_date)} às {fmtTime(a.appointment_time)} · {(a.duration_minutes ?? a.services?.duration_minutes ?? 60)} min · {a.promotions ? `Promoção: ${a.promotions.name}` : a.services?.name ?? 'Serviço removido'}
                 </p>
-                <p className="text-xs text-plum-200/70">{brl(a.final_amount)}</p>
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] ${a.appointment_type === 'maintenance' ? 'border-lavender/40 bg-lavender/10 text-lavender' : 'border-white/10 bg-white/5 text-plum-200/70'}`}>
+                    {a.appointment_type === 'maintenance' ? 'Manutenção' : 'Serviço'}
+                  </span>
+                  <span className="text-plum-200/70">{brl(a.final_amount)}</span>
+                  <span className="text-plum-300/60">{STATUS_LABEL[a.status] ?? a.status}</span>
+                </p>
                 {a.notes && <p className="mt-1 text-xs text-plum-200/60 italic">“{a.notes}”</p>}
                 {a.rescheduled_from_date && (
                   <p className="mt-1 text-xs text-fuchsia-200/80">
