@@ -15,11 +15,24 @@ export function useFetch(table, { columns = '*', filters = [], order = null, lim
       try {
         let query = supabase.from(table).select(columns);
         filters.forEach(([col, op, val]) => (query = query.filter(col, op, val)));
-        if (order) query = query.order(order.col, { ascending: order.asc ?? true });
-        if (limit) query = query.limit(limit);
-        const { data: rows, error: err } = await query;
-        if (err) throw err;
-        if (mounted) setData(rows ?? []);
+        if (order) {
+          query = query.order(order.col, { ascending: order.asc ?? true });
+          // Garante ordenação estável ao paginar
+          query = query.order('id', { ascending: true });
+        }
+        // Busca TODAS as páginas (o PostgREST limita a ~1000 linhas por requisição)
+        const PAGE = 1000;
+        let allRows = [];
+        let from = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data: rows, error: err } = await query.range(from, from + PAGE - 1);
+          if (err) throw err;
+          allRows = allRows.concat(rows ?? []);
+          if (!rows || rows.length < PAGE) break;
+          from += PAGE;
+        }
+        if (mounted) setData(allRows);
       } catch (e) {
         if (mounted) setError(e?.message ?? 'Erro ao carregar dados.');
       } finally {
