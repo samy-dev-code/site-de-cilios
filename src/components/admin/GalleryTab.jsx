@@ -67,7 +67,7 @@ export default function GalleryTab() {
   const [savedId, setSavedId] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [draft, setDraft] = useState({ label: '', hint: '', before_url: '', after_url: '' });
+  const [draft, setDraft] = useState({ label: '', hint: '', service_name: '', category: '', before_url: '', after_url: '' });
   const [savingDraft, setSavingDraft] = useState(false);
 
   const load = async () => {
@@ -93,7 +93,7 @@ export default function GalleryTab() {
     setError(null);
     const { error: err } = await supabase
       .from('gallery_items')
-      .update({ label: it.label, hint: it.hint, before_url: it.before_url, after_url: it.after_url, active: it.active, position: it.position })
+      .update({ label: it.label, hint: it.hint, service_name: it.service_name || '', category: it.category || '', before_url: it.before_url, after_url: it.after_url, active: it.active, position: it.position })
       .eq('id', it.id);
     if (err) setError(err.message);
     else {
@@ -138,7 +138,7 @@ export default function GalleryTab() {
     if (err) setError(err.message);
     else {
       setItems((list) => [...list, data]);
-      setDraft({ label: '', hint: '', before_url: '', after_url: '' });
+      setDraft({ label: '', hint: '', service_name: '', category: '', before_url: '', after_url: '' });
       setShowForm(false);
     }
     setSavingDraft(false);
@@ -199,6 +199,26 @@ export default function GalleryTab() {
                   value={draft.hint}
                   onChange={(e) => setDraft((d) => ({ ...d, hint: e.target.value }))}
                   placeholder="Ex.: Resultado natural"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Serviço realizado</label>
+                <input
+                  value={draft.service_name}
+                  onChange={(e) => setDraft((d) => ({ ...d, service_name: e.target.value }))}
+                  placeholder="Ex.: Volume Russo"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Categoria (opcional)</label>
+                <input
+                  value={draft.category}
+                  onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
+                  placeholder="Ex.: Cílios, Sobrancelhas…"
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
                 />
               </div>
@@ -281,6 +301,24 @@ export default function GalleryTab() {
                 value={it.hint}
                 onChange={(e) => patch(it.id, { hint: e.target.value })}
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-lavender/70 transition"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Serviço realizado</label>
+              <input
+                value={it.service_name || ''}
+                onChange={(e) => patch(it.id, { service_name: e.target.value })}
+                placeholder="Ex.: Volume Russo"
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs uppercase tracking-widest text-lavender/70">Categoria (opcional)</label>
+              <input
+                value={it.category || ''}
+                onChange={(e) => patch(it.id, { category: e.target.value })}
+                placeholder="Ex.: Cílios, Sobrancelhas…"
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition"
               />
             </div>
           </div>
