@@ -208,8 +208,7 @@ function SiteHome() {
   // Home enxuta: no máximo 4 serviços visíveis, com botão para ver todos
   const MAX_HOME_SERVICES = 4;
   const hasMoreServices = filteredServices.length > MAX_HOME_SERVICES;
-  const visibleServices =
-    hasMoreServices && !showAllServices ? filteredServices.slice(0, MAX_HOME_SERVICES) : filteredServices;
+  const visibleServices = hasMoreServices ? filteredServices.slice(0, MAX_HOME_SERVICES) : filteredServices;
   const featured = allServices.filter((s) => s.featured);
   const activeCategories = asArray(categories.data).filter((c) =>
     allServices.some((s) => s.categories?.slug === c.slug)
@@ -329,7 +328,7 @@ function SiteHome() {
             )}
 
             {/* Botão para revelar todos os serviços (home enxuta) */}
-            {hasMoreServices && !showAllServices && (
+            {hasMoreServices && (
               <div className="mt-10 text-center">
                 <Link
                   to="/servicos"
