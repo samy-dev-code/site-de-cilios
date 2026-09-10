@@ -488,6 +488,35 @@ export default function BookingModal({ services, promotions, loading = false, er
               {pricing.final > 0 && <> Valor final: <strong className="text-plum-200">{brl(pricing.final)}</strong>.</>}
             </p>
             <p className="mt-2 text-xs text-plum-200/60">Uma janela do WhatsApp foi aberta para você enviar a confirmação. Se não abriu, verifique o bloqueador de pop-ups.</p>
+            {payment === 'pix' && pricing.final > 0 && (
+              <div className="mt-6">
+                <p className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-center text-xs leading-relaxed text-amber-100">
+                  Após realizar o pagamento, envie o comprovante pelo WhatsApp comercial para confirmar seu agendamento.
+                </p>
+                <button
+                  onClick={() => {
+                    const dateLabel = date ? `${WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, ${fmtBR(date)}` : '';
+                    openWhatsApp([
+                      '💜 *Comprovante de pagamento — PIX*',
+                      '',
+                      `✨ *Serviço:* ${selectedLabel}`,
+                      dateLabel && `📅 *Data:* ${dateLabel}`,
+                      time && `⏰ *Horário:* ${time}`,
+                      `💰 *Valor:* ${brl(pricing.final)}`,
+                      '',
+                      `👩 *Nome:* ${name.trim()}`,
+                      `📱 *WhatsApp:* ${whatsapp.trim()}`,
+                      '',
+                      'Segue o comprovante do pagamento em anexo. 💜',
+                    ].filter(Boolean).join('\n'), pix.whatsapp_number);
+                  }}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-3 text-xs font-bold uppercase tracking-wide text-emerald-300 transition hover:bg-emerald-500/25"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M12.04 2a9.9 9.9 0 0 0-8.4 15.2L2 22l4.9-1.6A9.9 9.9 0 1 0 12.04 2Zm5.8 14.1c-.25.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1a15 15 0 0 1-6.9-5.9c-.5-.9-.8-1.9-.8-2.7 0-.9.4-1.6.9-2 .2-.3.5-.4.7-.4h.5c.2 0 .4 0 .6.5s.8 1.9.8 2c.1.2.1.4 0 .6l-.4.6c-.2.2-.3.3-.2.6.3.6.8 1.4 1.4 2 .8.8 1.5 1.1 1.8 1.3.3.1.5.1.6-.1l.8-1c.2-.3.4-.2.6-.1l2 .9c.2.1.4.2.4.3 0 .1 0 .5-.3 1.2Z" /></svg>
+                  Enviar comprovante no WhatsApp
+                </button>
+              </div>
+            )}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <button onClick={reset} className="btn-lux rounded-full bg-gradient-to-r from-plum-700 to-plum-500 px-6 py-3 text-sm font-medium text-white">
                 Novo agendamento
@@ -812,6 +841,11 @@ export default function BookingModal({ services, promotions, loading = false, er
                             )}
                           </div>
                         </div>
+                      </div>
+                    )}
+                    {payment === 'pix' && pricing.final > 0 && (
+                      <div className="mb-4 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-center text-xs leading-relaxed text-amber-100">
+                        Após realizar o pagamento, envie o comprovante pelo WhatsApp comercial para confirmar seu agendamento.
                       </div>
                     )}
                     {payment === 'pix' && pricing.final === 0 && (
