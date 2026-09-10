@@ -199,7 +199,7 @@ export default function PromotionsTab({ onAudit }) {
   const isExpired = form.end_date && form.end_date < new Date().toISOString().slice(0, 10);
   const bundle = bundlePrice(form.service_ids);
 
-  const btn = 'rounded-full border border-white/10 px-3.5 py-2 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition whitespace-nowrap';
+  const btn = 'tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition whitespace-nowrap';
   const inputCls = 'w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition';
   const labelCls = 'mb-1.5 block text-xs uppercase tracking-widest text-lavender/70';
 
@@ -371,8 +371,8 @@ export default function PromotionsTab({ onAudit }) {
                 </div>
                 <div className="flex flex-wrap items-start gap-1.5 sm:justify-end">
                   <div className="flex flex-col gap-1">
-                    <button onClick={() => move(p, -1)} disabled={i === 0} className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-plum-200/70 hover:border-lavender/50 disabled:opacity-30" aria-label="Subir">▲</button>
-                    <button onClick={() => move(p, 1)} disabled={i === filtered.length - 1} className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-plum-200/70 hover:border-lavender/50 disabled:opacity-30" aria-label="Descer">▼</button>
+                    <button onClick={() => move(p, -1)} disabled={i === 0} className="h-9 w-9 rounded-full border border-white/10 text-xs text-plum-200/70 hover:border-lavender/50 disabled:opacity-30" aria-label="Subir">▲</button>
+                    <button onClick={() => move(p, 1)} disabled={i === filtered.length - 1} className="h-9 w-9 rounded-full border border-white/10 text-xs text-plum-200/70 hover:border-lavender/50 disabled:opacity-30" aria-label="Descer">▼</button>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <button onClick={() => patch(p, { active: !p.active })} className={btn}>{p.active ? 'Desativar' : 'Ativar'}</button>
@@ -380,7 +380,7 @@ export default function PromotionsTab({ onAudit }) {
                     <button onClick={() => patch(p, { archived: !p.archived })} className={btn}>{p.archived ? 'Desarquivar' : 'Arquivar'}</button>
                     <button onClick={() => startEdit(p)} className={btn}>Editar</button>
                     <button onClick={() => duplicate(p)} className={btn}>Duplicar</button>
-                    <button onClick={() => remove(p)} className="rounded-full px-3 py-1.5 text-[11px] text-red-300/60 hover:text-red-300 transition">Excluir</button>
+                    <button onClick={() => remove(p)} className="tap-btn rounded-full px-4 text-xs text-red-300/60 hover:text-red-300 transition">Excluir</button>
                   </div>
                 </div>
               </div>

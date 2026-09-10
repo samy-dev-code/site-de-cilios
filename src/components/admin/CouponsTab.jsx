@@ -179,7 +179,7 @@ export default function CouponsTab({ onAudit }) {
   const today = new Date().toISOString().slice(0, 10);
   const isExpired = form.end_date && form.end_date < today;
 
-  const btn = 'rounded-full border border-white/10 px-3.5 py-2 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition whitespace-nowrap';
+  const btn = 'tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition whitespace-nowrap';
   const inputCls = 'w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-plum-300/40 outline-none focus:border-lavender/70 transition';
   const labelCls = 'mb-1.5 block text-xs uppercase tracking-widest text-lavender/70';
 
@@ -332,7 +332,7 @@ export default function CouponsTab({ onAudit }) {
                     <button onClick={() => patch(c, { archived: !c.archived })} className={btn}>{c.archived ? 'Desarquivar' : 'Arquivar'}</button>
                     <button onClick={() => startEdit(c)} className={btn}>Editar</button>
                     <button onClick={() => duplicate(c)} className={btn}>Duplicar</button>
-                    <button onClick={() => remove(c)} className="rounded-full px-3 py-1.5 text-[11px] text-red-300/60 hover:text-red-300 transition">Excluir</button>
+                    <button onClick={() => remove(c)} className="tap-btn rounded-full px-4 text-xs text-red-300/60 hover:text-red-300 transition">Excluir</button>
                   </div>
                 </div>
               </div>

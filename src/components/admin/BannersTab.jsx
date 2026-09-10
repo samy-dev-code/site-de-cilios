@@ -431,23 +431,23 @@ export default function BannersTab() {
                     {img ? <img src={img} alt={b.title ?? 'Banner'} className="h-full w-full object-cover" loading="lazy" /> : <div className="flex h-full items-center justify-center text-lg text-lavender/40">✦</div>}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-lavender-soft truncate">
-                      {b.title || 'Sem título'} {b.featured && <span className="text-amber-300">✦</span>}
-                    </p>
-                    <p className="text-xs text-plum-200/60 truncate">{b.subtitle || '—'}</p>
-                    <p className="mt-0.5 text-[11px] text-plum-200/40">
-                      #{i + 1} · Início: {fmt(b.start_at)} · {b.no_expiration ? 'Sem expiração' : `Fim: ${fmt(b.end_at)}`}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`rounded-full border px-3 py-0.5 text-[11px] ${st.cls}`}>{st.label}</span>
-                    <div className="flex flex-wrap justify-end gap-1.5 text-[11px]">
-                      <button onClick={() => patch(b, { active: !b.active }, b.active ? 'Banner desativado.' : 'Banner ativado!')} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">{b.active ? 'Desativar' : 'Ativar'}</button>
-                      <button onClick={() => setPreviewOpen(b)} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">Preview</button>
-                      <button onClick={() => startEdit(b)} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">Editar</button>
-                      <button onClick={() => duplicate(b)} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">Duplicar</button>
-                      <button onClick={() => patch(b, { archived: true }, 'Banner arquivado.')} className="min-h-[36px] px-2 text-plum-200/80 hover:text-lavender transition">Arquivar</button>
-                      <button onClick={() => remove(b)} className="min-h-[36px] px-2 text-red-300/60 hover:text-red-300 transition">Excluir</button>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-lavender-soft truncate">{b.title || 'Sem título'} {b.featured && <span className="text-amber-300">✦</span>}</p>
+                        <p className="text-xs text-plum-200/60 truncate">{b.subtitle || '—'}</p>
+                        <p className="mt-0.5 text-[11px] text-plum-200/40">
+                          #{i + 1} · Início: {fmt(b.start_at)} · {b.no_expiration ? 'Sem expiração' : `Fim: ${fmt(b.end_at)}`}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-3 py-0.5 text-[11px] ${st.cls}`}>{st.label}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                      <button onClick={() => patch(b, { active: !b.active }, b.active ? 'Banner desativado.' : 'Banner ativado!')} className="tap-btn rounded-full border border-white/10 px-3 text-plum-200/80 hover:text-lavender transition">{b.active ? 'Desativar' : 'Ativar'}</button>
+                      <button onClick={() => setPreviewOpen(b)} className="tap-btn rounded-full border border-white/10 px-3 text-plum-200/80 hover:text-lavender transition">Preview</button>
+                      <button onClick={() => startEdit(b)} className="tap-btn rounded-full border border-white/10 px-3 text-plum-200/80 hover:text-lavender transition">Editar</button>
+                      <button onClick={() => duplicate(b)} className="tap-btn rounded-full border border-white/10 px-3 text-plum-200/80 hover:text-lavender transition">Duplicar</button>
+                      <button onClick={() => patch(b, { archived: true }, 'Banner arquivado.')} className="tap-btn rounded-full border border-white/10 px-3 text-plum-200/80 hover:text-lavender transition">Arquivar</button>
+                      <button onClick={() => remove(b)} className="tap-btn rounded-full border border-red-400/30 px-3 text-red-300/70 hover:bg-red-500/10 transition">Excluir</button>
                     </div>
                   </div>
                 </li>
@@ -463,9 +463,9 @@ export default function BannersTab() {
                 {archivedItems.map((b) => (
                   <li key={b.id} className="flex items-center justify-between gap-3 rounded-xl bg-black/20 px-3 py-2">
                     <span className="truncate text-plum-200/70">{b.title || 'Sem título'}</span>
-                    <div className="flex gap-2 text-[11px]">
-                      <button onClick={() => patch(b, { archived: false }, 'Banner restaurado.')} className="text-plum-200/80 hover:text-lavender transition">Restaurar</button>
-                      <button onClick={() => remove(b)} className="text-red-300/60 hover:text-red-300 transition">Excluir</button>
+                    <div className="flex gap-3 text-[11px]">
+                      <button onClick={() => patch(b, { archived: false }, 'Banner restaurado.')} className="tap-btn rounded-full border border-white/10 px-3 text-plum-200/80 hover:text-lavender transition">Restaurar</button>
+                      <button onClick={() => remove(b)} className="tap-btn rounded-full border border-red-400/30 px-3 text-red-300/70 hover:bg-red-500/10 transition">Excluir</button>
                     </div>
                   </li>
                 ))}

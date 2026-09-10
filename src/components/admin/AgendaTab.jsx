@@ -121,13 +121,13 @@ export default function AgendaTab() {
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="flex rounded-full border border-white/10 overflow-hidden">
           {['month', 'list'].map((v) => (
-            <button key={v} onClick={() => setView(v)} className={`px-4 py-1.5 text-xs transition ${view === v ? 'bg-lavender/20 text-lavender-soft' : 'text-plum-200/60 hover:text-lavender'}`}>
+            <button key={v} onClick={() => setView(v)} className={`px-5 py-2.5 text-xs transition ${view === v ? 'bg-lavender/20 text-lavender-soft' : 'text-plum-200/60 hover:text-lavender'}`}>
               {v === 'month' ? 'Calendário' : 'Lista'}
             </button>
           ))}
         </div>
         {view === 'list' && (
-          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-full border border-white/10 bg-black/40 px-4 py-1.5 text-xs text-plum-100 outline-none focus:border-lavender/60">
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-full border border-white/10 bg-black/40 px-4 py-2.5 text-xs text-plum-100 outline-none focus:border-lavender/60">
             <option value="all">Todos os status</option>
             {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
@@ -141,9 +141,9 @@ export default function AgendaTab() {
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="glass rounded-3xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="rounded-full border border-white/10 px-3 py-1 text-lavender hover:bg-white/5 transition">←</button>
+              <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-lavender hover:bg-white/5 transition">←</button>
               <span className="font-serif text-xl text-lavender-soft">{MONTHS[cursor.getMonth()]} {cursor.getFullYear()}</span>
-              <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="rounded-full border border-white/10 px-3 py-1 text-lavender hover:bg-white/5 transition">→</button>
+              <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-lavender hover:bg-white/5 transition">→</button>
             </div>
             <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-[9px] sm:text-[11px] text-plum-300/60 mb-2">
               {WEEKDAYS.map((w) => <span key={w}>{w.slice(0, 3)}</span>)}
@@ -231,10 +231,12 @@ function AppointmentRow({ a, busyId, setStatus, remove, setEditing, showDate }) 
   const st = STATUS[a.status] ?? STATUS.pending;
   const dur = a.services?.duration_minutes ?? 60;
   return (
-    <div>
+    <div className="glass glass-hover rounded-2xl p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="font-medium text-lavender-soft">{a.client_name}</p>
+        <div className="min-w-0">
+          <p className="font-medium text-lavender-soft truncate">
+            {a.client_name} <span className="text-xs text-plum-200/50">{a.client_whatsapp}</span>
+          </p>
           <p className="text-xs text-plum-200/70">
             {showDate ? `${fmtBR(a.appointment_date)} · ` : ''}{a.appointment_time.slice(0, 5)} · {dur} min · {a.services?.name ?? 'Serviço removido'}
           </p>
@@ -246,26 +248,26 @@ function AppointmentRow({ a, busyId, setStatus, remove, setEditing, showDate }) 
         <a
           href={`https://wa.me/55${a.client_whatsapp.replace(/\D/g, '')}`}
           target="_blank" rel="noreferrer"
-          className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition"
+          className="tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition"
         >
           WhatsApp
         </a>
         {a.status === 'pending' && (
           <>
-            <button disabled={busyId === a.id} onClick={() => setStatus(a.id, 'confirmed')} className="rounded-full bg-emerald-500/20 border border-emerald-400/40 px-3 py-1 text-[11px] text-emerald-200 hover:bg-emerald-500/30 transition disabled:opacity-50">Aprovar</button>
-            <button disabled={busyId === a.id} onClick={() => setStatus(a.id, 'cancelled')} className="rounded-full bg-red-500/15 border border-red-400/40 px-3 py-1 text-[11px] text-red-200 hover:bg-red-500/25 transition disabled:opacity-50">Recusar</button>
+            <button disabled={busyId === a.id} onClick={() => setStatus(a.id, 'confirmed')} className="tap-btn rounded-full bg-emerald-500/20 border border-emerald-400/40 px-4 text-xs text-emerald-200 hover:bg-emerald-500/30 transition disabled:opacity-50">Aprovar</button>
+            <button disabled={busyId === a.id} onClick={() => setStatus(a.id, 'cancelled')} className="tap-btn rounded-full bg-red-500/15 border border-red-400/40 px-4 text-xs text-red-200 hover:bg-red-500/25 transition disabled:opacity-50">Recusar</button>
           </>
         )}
         {a.status === 'confirmed' && (
           <>
-            <button disabled={busyId === a.id} onClick={() => setStatus(a.id, 'completed')} className="rounded-full border border-sky-400/40 px-3 py-1 text-[11px] text-sky-200 hover:bg-sky-500/10 transition disabled:opacity-50">Concluir</button>
-            <button disabled={busyId === a.id} onClick={() => setStatus(a.id, 'cancelled')} className="rounded-full bg-red-500/15 border border-red-400/40 px-3 py-1 text-[11px] text-red-200 hover:bg-red-500/25 transition disabled:opacity-50">Cancelar</button>
+            <button disabled={busyId === a.id} onClick={() => setStatus(a.id, 'completed')} className="tap-btn rounded-full border border-sky-400/40 px-4 text-xs text-sky-200 hover:bg-sky-500/10 transition disabled:opacity-50">Concluir</button>
+            <button disabled={busyId === a.id} onClick={() => setStatus(a.id, 'cancelled')} className="tap-btn rounded-full bg-red-500/15 border border-red-400/40 px-4 text-xs text-red-200 hover:bg-red-500/25 transition disabled:opacity-50">Cancelar</button>
           </>
         )}
         {a.status !== 'cancelled' && (
-          <button disabled={busyId === a.id} onClick={() => setEditing(a)} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition disabled:opacity-50">Remarcar</button>
+          <button disabled={busyId === a.id} onClick={() => setEditing(a)} className="tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition disabled:opacity-50">Remarcar</button>
         )}
-        <button disabled={busyId === a.id} onClick={() => remove(a.id)} className="ml-auto text-[11px] text-red-300/60 hover:text-red-300 transition disabled:opacity-50">Excluir</button>
+        <button disabled={busyId === a.id} onClick={() => remove(a.id)} className="tap-btn rounded-full px-4 text-xs text-red-300/60 hover:text-red-300 transition disabled:opacity-50">Excluir</button>
       </div>
     </div>
   );

@@ -232,9 +232,9 @@ function SettingsTab() {
             aria-checked={pixEnabled}
             disabled={pixSaving}
             onClick={() => savePixToggle(!pixEnabled)}
-            className={`relative h-7 w-12 rounded-full transition ${pixEnabled ? 'bg-gradient-to-r from-plum-500 to-lavender' : 'bg-white/15'} ${pixSaving ? 'opacity-50' : ''}`}
+            className={`relative h-9 w-14 rounded-full transition ${pixEnabled ? 'bg-gradient-to-r from-plum-500 to-lavender' : 'bg-white/15'} ${pixSaving ? 'opacity-50' : ''}`}
           >
-            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${pixEnabled ? 'left-6' : 'left-1'}`} />
+            <span className={`absolute top-1 h-7 w-7 rounded-full bg-white shadow transition-all ${pixEnabled ? 'left-6' : 'left-1'}`} />
           </button>
         </div>
         <p className={`mt-2 text-xs ${pixEnabled ? 'text-emerald-300' : 'text-plum-200/60'}`}>
@@ -256,7 +256,7 @@ function SettingsTab() {
               type="button"
               disabled={pixSaving}
               onClick={() => qrFileRef.current?.click()}
-              className="rounded-full border border-lavender/40 px-5 py-2 text-xs text-lavender transition hover:bg-lavender/10 disabled:opacity-50"
+              className="rounded-full border border-lavender/40 px-5 py-3 text-xs text-lavender transition hover:bg-lavender/10 disabled:opacity-50"
             >
               {pixSaving ? 'Enviando…' : 'Alterar imagem do QR Code'}
             </button>
@@ -306,7 +306,7 @@ export default function AdminPage() {
   if (!session) return <Login />;
 
   return (
-    <div className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 py-10">
+    <div className="min-h-screen max-w-6xl mx-auto w-full px-4 sm:px-6 py-10 overflow-x-hidden">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3 min-w-0">
           {/* Hambúrguer (mobile) */}
@@ -329,11 +329,11 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Link to="/" className="rounded-full border border-white/10 px-4 py-2 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">Ver site</Link>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link to="/" className="rounded-full border border-white/10 px-4 py-2.5 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">Ver site</Link>
           <button
             onClick={() => supabase.auth.signOut()}
-            className="rounded-full border border-red-400/30 px-4 py-2 text-xs text-red-200/90 hover:bg-red-500/10 transition"
+            className="rounded-full border border-red-400/30 px-4 py-2.5 text-xs text-red-200/90 hover:bg-red-500/10 transition"
           >
             Sair
           </button>

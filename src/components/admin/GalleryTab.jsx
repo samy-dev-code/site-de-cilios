@@ -43,7 +43,7 @@ function PhotoSlot({ label, value, onPick, onClear, busy }) {
             <button
               type="button"
               onClick={onClear}
-              className="block text-[11px] text-red-200/80 hover:text-red-200 transition"
+              className="tap-btn rounded-full border border-red-400/30 px-4 text-xs text-red-200/80 hover:text-red-200 transition"
             >
               Remover
             </button>

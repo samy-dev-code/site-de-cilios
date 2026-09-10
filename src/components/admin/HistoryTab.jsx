@@ -141,7 +141,7 @@ function ClientHistory() {
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={selCls} />
         </div>
         {(search || statusFilter !== 'all' || from || to) && (
-          <button onClick={() => { setSearch(''); setStatusFilter('all'); setFrom(''); setTo(''); }} className="rounded-full border border-white/10 px-4 py-2.5 text-xs text-plum-200/70 hover:text-lavender transition">
+          <button onClick={() => { setSearch(''); setStatusFilter('all'); setFrom(''); setTo(''); }} className="tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/70 hover:text-lavender transition">
             Limpar filtros
           </button>
         )}
@@ -181,11 +181,11 @@ function ClientHistory() {
               </span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={() => openDetails(a.id)} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">
+              <button onClick={() => openDetails(a.id)} className="tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/80 hover:border-lavender/50 hover:text-lavender transition">
                 {expanded === a.id ? 'Ocultar detalhes' : 'Ver detalhes'}
               </button>
               {a.status === 'completed' && (
-                <button onClick={() => setMaintaining(a)} className="rounded-full border border-lavender/40 bg-lavender/10 px-3 py-1 text-[11px] text-lavender hover:bg-lavender/20 transition">
+                <button onClick={() => setMaintaining(a)} className="tap-btn rounded-full border border-lavender/40 bg-lavender/10 px-4 text-xs text-lavender hover:bg-lavender/20 transition">
                   Agendar manutenção
                 </button>
               )}
@@ -293,7 +293,7 @@ function PriceHistory() {
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={selCls} />
         </div>
         {(serviceFilter !== 'all' || from || to) && (
-          <button onClick={() => { setServiceFilter('all'); setFrom(''); setTo(''); }} className="rounded-full border border-white/10 px-4 py-2.5 text-xs text-plum-200/70 hover:text-lavender transition">
+          <button onClick={() => { setServiceFilter('all'); setFrom(''); setTo(''); }} className="tap-btn rounded-full border border-white/10 px-4 text-xs text-plum-200/70 hover:text-lavender transition">
             Limpar filtros
           </button>
         )}
