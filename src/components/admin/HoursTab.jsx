@@ -23,7 +23,7 @@ export default function HoursTab() {
       supabase.from('blocked_dates').select('*').gte('blocked_date', toISO(new Date())).order('blocked_date'),
     ]);
     if (h.error || b.error) setMsg({ err: true, text: h.error?.message || b.error?.message || 'Erro ao carregar horários.' });
-    setHours(asArray(h.data));
+    setHours(asArray(h.data).map((h) => ({ ...h, has_second_period: !!(h.open_time_2 && h.close_time_2) })));
     setBlocked(asArray(b.data));
     setLoading(false);
   }, []);
@@ -42,8 +42,37 @@ export default function HoursTab() {
       weekday: h.weekday,
       open_time: h.is_open && h.open_time ? h.open_time : null,
       close_time: h.is_open && h.close_time ? h.close_time : null,
+      open_time_2: h.is_open && h.has_second_period && h.open_time_2 ? h.open_time_2 : null,
+      close_time_2: h.is_open && h.has_second_period && h.close_time_2 ? h.close_time_2 : null,
       is_open: h.is_open,
     }));
+    const toMin = (t) => { const [hh, mm] = String(t).split(':').map(Number); return (hh || 0) * 60 + (mm || 0); };
+    for (const r of rows) {
+      if (!r.is_open) continue;
+      const label = WEEKDAYS[r.weekday];
+      if (!r.open_time || !r.close_time) {
+        setMsg({ err: true, text: `Preencha abertura e fechamento do período 1 de ${label}.` });
+        setSaving(false); return;
+      }
+      if (toMin(r.close_time) <= toMin(r.open_time)) {
+        setMsg({ err: true, text: `No período 1 de ${label}, o fechamento deve ser depois da abertura.` });
+        setSaving(false); return;
+      }
+      if (r.open_time_2 || r.close_time_2) {
+        if (!r.open_time_2 || !r.close_time_2) {
+          setMsg({ err: true, text: `Preencha abertura e fechamento do período 2 de ${label}.` });
+          setSaving(false); return;
+        }
+        if (toMin(r.close_time_2) <= toMin(r.open_time_2)) {
+          setMsg({ err: true, text: `No período 2 de ${label}, o fechamento deve ser depois da abertura.` });
+          setSaving(false); return;
+        }
+        if (toMin(r.open_time_2) < toMin(r.close_time)) {
+          setMsg({ err: true, text: `Em ${label}, o período 2 deve começar depois do fim do período 1.` });
+          setSaving(false); return;
+        }
+      }
+    }
     const { error } = await supabase.from('business_hours').upsert(rows);
     setSaving(false);
     setMsg(error ? { err: true, text: error.message } : { err: false, text: 'Horários salvos com sucesso! 💜' });
@@ -89,25 +118,66 @@ export default function HoursTab() {
                 </label>
               </div>
               {h.is_open && (
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Abre</span>
-                    <input
-                      type="time"
-                      value={(h.open_time ?? '').slice(0, 5)}
-                      onChange={(e) => updateLocal(h.id, { open_time: e.target.value })}
-                      className={inputCls}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Fecha</span>
-                    <input
-                      type="time"
-                      value={(h.close_time ?? '').slice(0, 5)}
-                      onChange={(e) => updateLocal(h.id, { close_time: e.target.value })}
-                      className={inputCls}
-                    />
-                  </label>
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Período 1 — Abre</span>
+                      <input
+                        type="time"
+                        value={(h.open_time ?? '').slice(0, 5)}
+                        onChange={(e) => updateLocal(h.id, { open_time: e.target.value })}
+                        className={inputCls}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Fecha</span>
+                      <input
+                        type="time"
+                        value={(h.close_time ?? '').slice(0, 5)}
+                        onChange={(e) => updateLocal(h.id, { close_time: e.target.value })}
+                        className={inputCls}
+                      />
+                    </label>
+                  </div>
+                  {h.has_second_period ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">Período 2 — Abre</span>
+                        <input
+                          type="time"
+                          value={(h.open_time_2 ?? '').slice(0, 5)}
+                          onChange={(e) => updateLocal(h.id, { open_time_2: e.target.value })}
+                          className={inputCls}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] uppercase tracking-widest text-lavender/60">
+                          Fecha
+                          <button
+                            type="button"
+                            onClick={() => updateLocal(h.id, { has_second_period: false, open_time_2: null, close_time_2: null })}
+                            className="ml-2 normal-case tracking-normal text-plum-200/60 underline transition hover:text-plum-100"
+                          >
+                            remover 2º período
+                          </button>
+                        </span>
+                        <input
+                          type="time"
+                          value={(h.close_time_2 ?? '').slice(0, 5)}
+                          onChange={(e) => updateLocal(h.id, { close_time_2: e.target.value })}
+                          className={inputCls}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => updateLocal(h.id, { has_second_period: true })}
+                      className="rounded-full border border-lavender/50 px-4 py-2 text-xs text-lavender hover:bg-lavender/10 transition"
+                    >
+                      + Adicionar 2º período
+                    </button>
+                  )}
                 </div>
               )}
             </li>

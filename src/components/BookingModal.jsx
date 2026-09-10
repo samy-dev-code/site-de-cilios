@@ -254,32 +254,39 @@ export default function BookingModal({ services, promotions, loading = false, er
 
   const hoursFor = (weekday) => {
     const h = hours.find((x) => x.weekday === weekday);
-    return h && h.is_open && h.open_time && h.close_time ? h : null;
+    if (!h || !h.is_open) return null;
+    const periods = [
+      h.open_time && h.close_time ? [h.open_time, h.close_time] : null,
+      h.open_time_2 && h.close_time_2 ? [h.open_time_2, h.close_time_2] : null,
+    ].filter(Boolean);
+    return periods.length ? periods : null;
   };
 
   const slots = useMemo(() => {
     if (!date || (!service && !promotion)) return [];
     const d = new Date(`${date}T12:00:00`);
-    const h = hoursFor(d.getDay());
-    if (!h) return [];
-    const [oh, om] = h.open_time.split(':').map(Number);
-    const [ch] = h.close_time.split(':').map(Number);
+    const periods = hoursFor(d.getDay());
+    if (!periods) return [];
     const stepMin = 30;
     const total = selectedDuration;
     const out = [];
-    for (let m = oh * 60 + om; m + total <= ch * 60; m += stepMin) {
-      const hh = String(Math.floor(m / 60)).padStart(2, '0');
-      const mm = String(m % 60).padStart(2, '0');
-      const label = `${hh}:${mm}`;
-      const start = m, end = m + total;
-      const conflict = asArray(takenSlots).some((a) => {
-        if (!a || typeof a.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
-        const [ah, am] = a.appointment_time.split(':').map(Number);
-        const aStart = (ah || 0) * 60 + (am || 0);
-        const aDur = Number(a.duration_minutes) || Number(a.services?.duration_minutes) || 60;
-        return start < aStart + aDur && aStart < end;
-      });
-      out.push({ label, conflict });
+    for (const [open, close] of periods) {
+      const [oh, om] = open.split(':').map(Number);
+      const [ch, cm] = close.split(':').map(Number);
+      for (let m = oh * 60 + om; m + total <= ch * 60 + cm; m += stepMin) {
+        const hh = String(Math.floor(m / 60)).padStart(2, '0');
+        const mm = String(m % 60).padStart(2, '0');
+        const label = `${hh}:${mm}`;
+        const start = m, end = m + total;
+        const conflict = asArray(takenSlots).some((a) => {
+          if (!a || typeof a.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
+          const [ah, am] = a.appointment_time.split(':').map(Number);
+          const aStart = (ah || 0) * 60 + (am || 0);
+          const aDur = Number(a.duration_minutes) || Number(a.services?.duration_minutes) || 60;
+          return start < aStart + aDur && aStart < end;
+        });
+        out.push({ label, conflict });
+      }
     }
     return out;
   }, [date, service, promotion, selectedDuration, hours, takenSlots]);
