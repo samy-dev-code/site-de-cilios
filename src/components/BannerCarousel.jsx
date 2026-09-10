@@ -47,12 +47,68 @@ const slideHeight = (mode) => HEIGHTS[mode] || HEIGHTS.default;
 const fitClass = (fit) => (FITS.includes(fit) ? fit : 'cover');
 const posClass = (p) => POS[p] || 'object-center';
 
-function BannerSlide({ banner, active, isFirst }) {
+// Faixas de altura no MOBILE (px) por modo — a altura real é calculada a partir
+// da proporção da imagem, preservando a arte inteira (sem cortar rostos/textos).
+const MOBILE_BOUNDS = {
+  compact: { min: 190, max: 420 },
+  default: { min: 240, max: 560 },
+  tall: { min: 300, max: 640 },
+  fullscreen: { min: 360, max: 760 },
+};
+const mobileBounds = (mode) => MOBILE_BOUNDS[mode] || MOBILE_BOUNDS.default;
+
+// Altura do carrossel no MOBILE: calculada a partir da proporção real da imagem
+// do banner ativo, para exibir a arte INTEIRA (sem cortar rostos, olhos, cílios,
+// sobrancelhas ou textos). Limitada a uma faixa saudável por modo de altura; se
+// a proporção não couber, o slide troca para "contain" e nunca deforma a imagem.
+function getMobileHeight(banner, ratios) {
+  const ratio = ratios[banner.id];
+  if (!ratio || !Number.isFinite(ratio) || ratio <= 0) return undefined;
+  const bounds = mobileBounds(banner.height_mode);
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
+  const ideal = Math.round(vw / ratio); // altura para mostrar a imagem inteira
+  return { height: `${Math.min(bounds.max, Math.max(bounds.min, ideal))}px` };
+}
+
+// Detecta mobile (<768px, mesma media query do <source> das imagens)
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return isMobile;
+}
+
+function BannerSlide({ banner, active, isFirst, isMobile, ratio, onAspect }) {
   const desktop = banner.desktop_image_url || banner.image_url;
   const mobile = banner.mobile_image_url || desktop;
   const fit = fitClass(banner.object_fit);
   const cpos = CONTENT_POS[banner.content_position] || CONTENT_POS.center;
   const overlay = Math.min(85, Math.max(0, Number(banner.overlay_opacity ?? 55))) / 100;
+
+  // Proporção medida no onLoad (reflete a imagem realmente exibida: mobile ou desktop)
+  const handleLoad = (e) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      onAspect?.(banner.id, img.naturalWidth / img.naturalHeight);
+    }
+  };
+
+  // Altura ideal no mobile = largura da tela / proporção → imagem inteira, sem corte.
+  // Se a proporção não couber na faixa do modo escolhido, usa "contain" para NUNCA
+  // cortar rostos, olhos, cílios, sobrancelhas ou textos da arte (e nunca deformar).
+  let mobileFit = fit;
+  if (isMobile && ratio) {
+    const bounds = mobileBounds(banner.height_mode);
+    const ideal = (typeof window !== 'undefined' ? window.innerWidth : 390) / ratio;
+    const clamped = Math.min(bounds.max, Math.max(bounds.min, ideal));
+    if (Math.abs(ideal - clamped) > 1) mobileFit = 'contain';
+  }
 
   return (
     <div
@@ -71,7 +127,8 @@ function BannerSlide({ banner, active, isFirst }) {
             decoding="async"
             draggable={false}
             fetchpriority={isFirst ? 'high' : undefined}
-            className={`h-full w-full ${fit === 'contain' ? 'object-contain bg-[#0a0510]' : 'object-cover'} ${posClass(banner.object_position)}`}
+            onLoad={handleLoad}
+            className={`h-full w-full ${mobileFit === 'contain' ? 'object-contain bg-[#0a0510]' : 'object-cover'} ${posClass(banner.object_position)}`}
             onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
           />
         </picture>
@@ -126,6 +183,12 @@ function BannerSlide({ banner, active, isFirst }) {
 }
 
 export default function BannerCarousel({ banners }) {
+  const isMobile = useIsMobile();
+  // Proporção (largura/altura) medida de cada imagem → altura responsiva no mobile
+  const [ratios, setRatios] = useState({});
+  const onAspect = useCallback((id, r) => {
+    setRatios((prev) => (prev[id] === r ? prev : { ...prev, [id]: r }));
+  }, []);
   const slides = useMemo(
     () => banners.filter((b) => b.desktop_image_url || b.image_url || b.title || b.subtitle),
     [banners]
@@ -211,9 +274,12 @@ export default function BannerCarousel({ banners }) {
       {/* Faixa luminosa premium acima do banner */}
       <div aria-hidden className="h-px w-full bg-gradient-to-r from-transparent via-plum-400/40 to-transparent" />
 
-      <div className={`group relative w-full touch-pan-y select-none overflow-hidden ${slideHeight(current?.height_mode)}`}>
+      <div
+        className={`group relative w-full touch-pan-y select-none overflow-hidden ${slideHeight(current?.height_mode)}`}
+        style={isMobile && current ? getMobileHeight(current, ratios) : undefined}
+      >
         {slides.map((b, i) => (
-          <BannerSlide key={b.id} banner={b} active={i === index} isFirst={i === 0} />
+          <BannerSlide key={b.id} banner={b} active={i === index} isFirst={i === 0} isMobile={isMobile} ratio={ratios[b.id]} onAspect={onAspect} />
         ))}
 
         {count > 1 && (
