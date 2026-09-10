@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import TiltCard from './TiltCard';
 
 const brl = (v) => `R$ ${Number(v ?? 0).toFixed(2).replace('.', ',')}`;
@@ -7,6 +8,25 @@ export default function ServiceCard({ service, onSchedule }) {
   const hasPromo = s.promotional_price != null && Number(s.promotional_price) < Number(s.price);
   const categoryName = s.categories?.name ?? null;
   const canSchedule = typeof onSchedule === 'function';
+  const [choiceOpen, setChoiceOpen] = useState(false);
+
+  // Manutenção válida = vinculada e ativa (não arquivada)
+  const m = s.maintenance_service;
+  const hasMaintenance = !!(m && m.id && m.active !== false && m.archived !== false);
+  const mHasPromo = hasMaintenance && m.promotional_price != null && Number(m.promotional_price) < Number(m.price);
+
+  const handleClick = () => {
+    if (hasMaintenance) {
+      setChoiceOpen(true);
+      return;
+    }
+    onSchedule(s);
+  };
+
+  const scheduleWith = (svc) => {
+    setChoiceOpen(false);
+    onSchedule(svc);
+  };
 
   return (
     <TiltCard className="h-full">
@@ -72,8 +92,42 @@ export default function ServiceCard({ service, onSchedule }) {
               onClick={() => onSchedule(s)}
               className="btn-lux mt-5 w-full rounded-full bg-gradient-to-r from-plum-700 to-plum-500 py-2.5 text-sm font-medium text-white shadow-lg shadow-plum-600/30 transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-lavender/60"
             >
-              Agendar
+              Agendar serviço
             </button>
+          )}
+
+          {/* Modal de escolha: serviço normal ou manutenção cadastrada */}
+          {choiceOpen && (
+            <div
+              className="absolute inset-0 z-20 flex items-center justify-center bg-plum-950/85 backdrop-blur-sm p-4"
+              onClick={() => setChoiceOpen(false)}
+            >
+              <div
+                className="w-full max-w-[260px] text-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="text-xs text-plum-200/70 mb-3">O que você deseja?</p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => scheduleWith(s)}
+                    className="btn-lux w-full rounded-full bg-gradient-to-r from-plum-700 to-plum-500 py-2.5 text-xs font-medium text-white transition hover:brightness-110"
+                  >
+                    Fazer este serviço
+                  </button>
+                  <button
+                    onClick={() => scheduleWith(m)}
+                    className="btn-lux w-full rounded-full border border-lavender/40 bg-white/5 py-2.5 text-xs font-medium text-lavender-soft transition hover:bg-white/10"
+                  >
+                    Fazer manutenção
+                  </button>
+                </div>
+                {hasMaintenance && (
+                  <p className="mt-2 text-[0.65rem] text-plum-300/60">
+                    Manutenção: {brl(m.promotional_price ?? m.price)} · {m.duration_minutes} min
+                  </p>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </article>

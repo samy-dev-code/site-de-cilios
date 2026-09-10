@@ -166,7 +166,7 @@ function SiteHome() {
       .filter((b) => !(b.no_expiration === false && b.end_at && new Date(b.end_at).getTime() < now));
   }, [banners.data]);
   const services = useFetch('services', {
-    columns: '*, categories(name, slug)',
+    columns: '*, categories(name, slug), maintenance_service:maintenance_service_id(id, name, price, promotional_price, duration_minutes, active, archived)',
     filters: [['active', 'eq', true], ['archived', 'eq', false]],
     order: { col: 'display_order' },
   });
@@ -182,7 +182,8 @@ function SiteHome() {
   const [presetService, setPresetService] = useState(null);
   const [scrolled, setScrolled] = useState(false);
 
-  // Pré-seleciona o serviço escolhido no catálogo ("Agendar" do card)
+  // O card do serviço decide se oferece escolha (serviço ou manutenção) e já
+  // passa o serviço/mantença correta pré-selecionada.
   const scheduleService = (svc) => {
     setPresetService(svc ?? null);
     setScheduleOpen(true);
@@ -372,7 +373,9 @@ function SiteHome() {
 
       {scheduleOpen && (
         <BookingErrorBoundary onClose={() => { setScheduleOpen(false); setPresetService(null); }}>
-          <BookingModal
+          {/* Modal de escolha agora vive dentro do ServiceCard (overlay no próprio card). */}
+
+      <BookingModal
             services={services.data}
             promotions={promotions.data}
             loading={services.loading || promotions.loading}
