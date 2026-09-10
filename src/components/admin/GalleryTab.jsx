@@ -69,6 +69,7 @@ export default function GalleryTab() {
   const [showForm, setShowForm] = useState(false);
   const [draft, setDraft] = useState({ label: '', hint: '', service_name: '', category: '', before_url: '', after_url: '' });
   const [savingDraft, setSavingDraft] = useState(false);
+  const [draftBusy, setDraftBusy] = useState(null); // 'before_url' | 'after_url' | null
 
   const load = async () => {
     setLoading(true);
@@ -142,6 +143,20 @@ export default function GalleryTab() {
       setShowForm(false);
     }
     setSavingDraft(false);
+  }
+
+  async function uploadDraftPhoto(file, field) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { setError('Selecione um arquivo de imagem.'); return; }
+    setDraftBusy(field);
+    setError(null);
+    try {
+      const url = await uploadImage(file, 'novo');
+      setDraft((d) => ({ ...d, [field]: url }));
+    } catch (e) {
+      setError(e.message || 'Falha no upload. Tente novamente.');
+    }
+    setDraftBusy(null);
   }
 
   async function move(it, dir) {
@@ -226,11 +241,24 @@ export default function GalleryTab() {
             <PhotoSlot
               label="Foto do ANTES (opcional)"
               value={draft.before_url}
-              busy={savingDraft}
-              onPick={(v, isUrl) => setDraft((d) => ({ ...d, before_url: isUrl ? v : '' }))}
+              busy={draftBusy === 'before_url'}
+              onPick={(v, isUrl) => {
+                if (isUrl) setDraft((d) => ({ ...d, before_url: v }));
+                else uploadDraftPhoto(v, 'before_url');
+              }}
               onClear={() => setDraft((d) => ({ ...d, before_url: '' }))}
             />
-            <p className="text-[11px] text-plum-200/50">Para o item novo, envie as fotos depois de salvar — use os botões "Enviar foto" do item criado.</p>
+            <PhotoSlot
+              label="Foto do DEPOIS (opcional)"
+              value={draft.after_url}
+              busy={draftBusy === 'after_url'}
+              onPick={(v, isUrl) => {
+                if (isUrl) setDraft((d) => ({ ...d, after_url: v }));
+                else uploadDraftPhoto(v, 'after_url');
+              }}
+              onClear={() => setDraft((d) => ({ ...d, after_url: '' }))}
+            />
+            <p className="text-[11px] text-plum-200/50">Pelo menos uma foto é recomendada para o item aparecer bem no portfólio.</p>
             <button
               type="submit" disabled={savingDraft}
               className="tap-btn rounded-full bg-gradient-to-r from-plum-600 to-plum-400 px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-plum-600/40 transition hover:brightness-110 disabled:opacity-60"
