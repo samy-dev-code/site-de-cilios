@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import SiteFooter from './components/SiteFooter';
 import WhatsAppFloat from './components/WhatsAppFloat';
 import { useFetch } from './hooks/useFetch';
@@ -18,6 +18,7 @@ const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
 const TermsOfUse = lazy(() => import('./pages/TermsOfUse.jsx'));
 const MediaKitPage = lazy(() => import('./pages/MediaKitPage.jsx'));
+const AllServicesPage = lazy(() => import('./pages/AllServicesPage.jsx'));
 
 const NAV_LINKS = [
   { href: '#servicos', label: 'Serviços' },
@@ -331,12 +332,12 @@ function SiteHome() {
             {/* Botão para revelar todos os serviços (home enxuta) */}
             {hasMoreServices && !showAllServices && (
               <div className="mt-10 text-center">
-                <button
-                  onClick={() => setShowAllServices(true)}
-                  className="btn-lux rounded-full border border-lavender/40 bg-plum-900/40 px-8 py-3.5 text-sm uppercase tracking-[0.2em] text-lavender transition hover:border-lavender/70 hover:bg-plum-800/50"
+                <Link
+                  to="/servicos"
+                  className="btn-lux inline-block rounded-full border border-lavender/40 bg-plum-900/40 px-8 py-3.5 text-sm uppercase tracking-[0.2em] text-lavender transition hover:border-lavender/70 hover:bg-plum-800/50"
                 >
                   Veja todos os nossos serviços ✦
-                </button>
+                </Link>
                 <p className="mt-3 text-xs text-plum-200/50">
                   +{filteredServices.length - MAX_HOME_SERVICES} {filteredServices.length - MAX_HOME_SERVICES === 1 ? 'serviço' : 'serviços'} disponíveis
                 </p>
@@ -417,6 +418,7 @@ export default function App() {
         <Route path="/admin/*" element={<AdminPage />} />
         <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
         <Route path="/divulgacao" element={<MediaKitPage />} />
+        <Route path="/servicos" element={<AllServicesPage />} />
         <Route path="/termos-de-uso" element={<TermsOfUse />} />
         <Route path="*" element={<SiteHome />} />
 
