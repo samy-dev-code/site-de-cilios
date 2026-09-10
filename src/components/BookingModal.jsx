@@ -231,7 +231,7 @@ export default function BookingModal({ services, promotions, loading = false, er
     setChecking(true);
     supabase
       .from('appointments')
-      .select('appointment_time, status, service_id, services(duration_minutes)')
+      .select('appointment_time, status, duration_minutes, service_id, services(duration_minutes)')
       .eq('appointment_date', date)
       .in('status', ['pending', 'confirmed'])
       .then(({ data, error }) => {

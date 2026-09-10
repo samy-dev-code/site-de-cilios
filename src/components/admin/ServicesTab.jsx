@@ -204,6 +204,9 @@ export default function ServicesTab({ onAudit }) {
     const { error: err } = await supabase.from('services').insert({
       name: `${s.name} (cópia)`, description: s.description, price: s.price,
       promotional_price: s.promotional_price, duration_minutes: s.duration_minutes,
+      maintenance_enabled: s.maintenance_enabled ?? false,
+      maintenance_price: s.maintenance_price, maintenance_promotional_price: s.maintenance_promotional_price,
+      maintenance_duration_minutes: s.maintenance_duration_minutes,
       category_id: s.category_id, image_url: s.image_url, active: false,
       featured: false, archived: false, display_order: (s.display_order ?? 0) + 1,
     });

@@ -28,9 +28,8 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
 
   const loadBase = useCallback(async () => {
     setError(null);
-    const [cats, svc, h, b] = await Promise.all([
-      supabase.from('categories').select('id, slug').eq('slug', 'manutencao').maybeSingle(),
-      supabase.from('services').select('id, name, price, promotional_price, duration_minutes, category_id').eq('active', true).eq('archived', false).order('display_order'),
+    const [svc, h, b] = await Promise.all([
+      supabase.from('services').select('id, name, maintenance_price, maintenance_promotional_price, maintenance_duration_minutes, duration_minutes').eq('active', true).eq('archived', false).eq('maintenance_enabled', true).not('maintenance_price', 'is', null).order('display_order'),
       supabase.from('business_hours').select('*'),
       supabase.from('blocked_dates').select('blocked_date, reason').gte('blocked_date', today),
     ]);
@@ -40,11 +39,7 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
       setServices([]);
       return;
     }
-    const catId = cats.data?.id;
-    const maintenance = catId
-      ? asArray(svc.data).filter((s) => s.category_id === catId)
-      : asArray(svc.data).filter((s) => /manuten/i.test(s.name ?? ''));
-    setServices(maintenance);
+    setServices(asArray(svc.data));
     setHours(asArray(h.data));
     setBlocked(asArray(b.data));
   }, [today]);
@@ -58,7 +53,7 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
     setChecking(true);
     supabase
       .from('appointments')
-      .select('appointment_time, status, service_id, services(duration_minutes)')
+      .select('appointment_time, status, duration_minutes, service_id, services(duration_minutes)')
       .eq('appointment_date', date)
       .in('status', ['pending', 'confirmed', 'in_progress'])
       .then(({ data, error: err }) => {
@@ -75,10 +70,19 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
     return h && h.is_open && h.open_time && h.close_time ? h : null;
   };
 
-  const duration = useMemo(
-    () => Number(asArray(services).find((s) => s.id === serviceId)?.duration_minutes) || 60,
+  const selectedService = useMemo(
+    () => asArray(services).find((s) => s.id === serviceId) ?? null,
     [services, serviceId]
   );
+
+  // A manutenção tem duração e preço próprios (embutidos no serviço)
+  const duration = useMemo(
+    () => Number(selectedService?.maintenance_duration_minutes) || Number(selectedService?.duration_minutes) || 60,
+    [selectedService]
+  );
+  const maintenancePrice = selectedService
+    ? Number(selectedService.maintenance_promotional_price ?? selectedService.maintenance_price) || 0
+    : 0;
 
   const slots = useMemo(() => {
     if (!date || !serviceId) return [];
@@ -94,7 +98,7 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
         if (typeof a?.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
         const [ah, am] = a.appointment_time.split(':').map(Number);
         const aStart = ah * 60 + (am || 0);
-        const aDur = Number(a.services?.duration_minutes) || 60;
+        const aDur = Number(a.duration_minutes) || Number(a.services?.duration_minutes) || 60;
         return m < aStart + aDur && aStart < end;
       });
       out.push({ label, conflict });
@@ -136,8 +140,6 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
     onDone?.(true);
   }
 
-  const selectedService = asArray(services).find((s) => s.id === serviceId);
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-3 sm:p-4" onClick={onClose}>
       <div className="glass sheet-safe max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-3xl sm:rounded-3xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -165,7 +167,7 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
                 className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none focus:border-lavender/70">
                 <option value="">Escolha…</option>
                 {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} · {s.duration_minutes ?? 60} min · {brl(s.promotional_price ?? s.price)}</option>
+                  <option key={s.id} value={s.id}>{s.name} · {s.maintenance_duration_minutes ?? s.duration_minutes ?? 60} min · {brl(s.maintenance_promotional_price ?? s.maintenance_price)}</option>
                 ))}
               </select>
             </div>
@@ -231,7 +233,7 @@ export default function MaintenanceModal({ original, onClose, onDone }) {
 
                 {selectedService && (
                   <p className="text-xs text-plum-200/60">
-                    {selectedService.name} · {fmtBR(date)} às {time ?? '—'} · {brl(selectedService.promotional_price ?? selectedService.price)}
+                    {selectedService.name} · {fmtBR(date)} às {time ?? '—'} · {duration} min · {brl(maintenancePrice)}
                   </p>
                 )}
               </>
