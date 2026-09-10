@@ -183,10 +183,10 @@ function SiteHome() {
   const [presetService, setPresetService] = useState(null);
   const [scrolled, setScrolled] = useState(false);
 
-  // O card do serviço decide se oferece escolha (serviço ou manutenção) e já
-  // passa o serviço/mantença correta pré-selecionada.
-  const scheduleService = (svc) => {
-    setPresetService(svc ?? null);
+  // O card informa o serviço e se é uma manutenção (botão "Agendar manutenção").
+  // Não criamos outro card/serviço: é o mesmo registro, com o tipo de agendamento.
+  const scheduleService = (svc, asMaintenance = false) => {
+    setPresetService(svc ? { ...svc, _asMaintenance: !!asMaintenance } : null);
     setScheduleOpen(true);
   };
 

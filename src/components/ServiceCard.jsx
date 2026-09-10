@@ -8,9 +8,10 @@ export default function ServiceCard({ service, onSchedule }) {
   const categoryName = s.categories?.name ?? null;
   const canSchedule = typeof onSchedule === 'function';
 
-  // Manutenção válida = vinculada e ativa (não arquivada)
-  const m = s.maintenance_service;
-  const hasMaintenance = !!(m && m.id && m.active !== false && m.archived !== false);
+  // Manutenção embutida no próprio registro do serviço (dados reais do Supabase)
+  const hasMaintenance = !!(s.maintenance_enabled && s.maintenance_price != null);
+  const maintenancePrice = s.maintenance_promotional_price ?? s.maintenance_price;
+  const maintenanceDuration = s.maintenance_duration_minutes || 60;
 
   return (
     <TiltCard className="h-full">
@@ -74,21 +75,21 @@ export default function ServiceCard({ service, onSchedule }) {
           {canSchedule && (
             <div className="mt-5 space-y-2">
               <button
-                onClick={() => onSchedule(s)}
+                onClick={() => onSchedule(s, false)}
                 className="btn-lux w-full rounded-full bg-gradient-to-r from-plum-700 to-plum-500 py-2.5 text-sm font-medium text-white shadow-lg shadow-plum-600/30 transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-lavender/60"
               >
-                Agendar
+                Agendar serviço
               </button>
               {hasMaintenance && (
                 <div>
                   <button
-                    onClick={() => onSchedule(m)}
+                    onClick={() => onSchedule(s, true)}
                     className="btn-lux w-full rounded-full border border-lavender/40 bg-white/5 py-2.5 text-sm font-medium text-lavender-soft transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-lavender/60"
                   >
-                    Manutenção
+                    Agendar manutenção
                   </button>
                   <p className="mt-1.5 text-center text-[0.65rem] text-plum-300/60">
-                    {brl(m.promotional_price ?? m.price)} · {m.duration_minutes} min
+                    {brl(maintenancePrice)} · {maintenanceDuration} min
                   </p>
                 </div>
               )}

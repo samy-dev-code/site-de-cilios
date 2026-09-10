@@ -95,8 +95,9 @@ class BookingErrorBoundary extends Component {
 export default function BookingModal({ services, promotions, loading = false, error = null, presetService = null, onClose }) {
   const [step, setStep] = useState(presetService ? 1 : 0);
   // Seleção: { type: 'service' | 'promotion', data }
+  // `_asMaintenance` chega do card público quando a cliente clicou em "Agendar manutenção"
   const [service, setService] = useState(presetService);
-  const [asMaintenance, setAsMaintenance] = useState(false);
+  const [asMaintenance, setAsMaintenance] = useState(!!presetService?._asMaintenance);
   const [promotion, setPromotion] = useState(null);
   const [tab, setTab] = useState(presetService ? 'service' : 'service');
   const [date, setDate] = useState(null);

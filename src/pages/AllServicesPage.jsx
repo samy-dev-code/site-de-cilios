@@ -41,8 +41,8 @@ export default function AllServicesPage() {
     allServices.some((s) => s.categories?.slug === c.slug)
   );
 
-  const scheduleService = (svc) => {
-    setPresetService(svc ?? null);
+  const scheduleService = (svc, asMaintenance = false) => {
+    setPresetService(svc ? { ...svc, _asMaintenance: !!asMaintenance } : null);
     setScheduleOpen(true);
   };
 
