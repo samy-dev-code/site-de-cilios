@@ -96,6 +96,7 @@ export default function BookingModal({ services, promotions, loading = false, er
   const [step, setStep] = useState(presetService ? 1 : 0);
   // Seleção: { type: 'service' | 'promotion', data }
   const [service, setService] = useState(presetService);
+  const [asMaintenance, setAsMaintenance] = useState(false);
   const [promotion, setPromotion] = useState(null);
   const [tab, setTab] = useState(presetService ? 'service' : 'service');
   const [date, setDate] = useState(null);
@@ -126,8 +127,9 @@ export default function BookingModal({ services, promotions, loading = false, er
   const [submitError, setSubmitError] = useState(null);
   const [done, setDone] = useState(false);
 
-  // Duração efetiva: serviço usa a própria; promoção soma os serviços incluídos
+  // Duração efetiva: manutenção usa a duração própria; promoção soma os serviços incluídos
   const selectedDuration = useMemo(() => {
+    if (service && asMaintenance) return Number(service.maintenance_duration_minutes) || Number(service.duration_minutes) || 60;
     if (service) return Number(service.duration_minutes) || 60;
     if (promotion) {
       const ids = asArray(promotion.service_ids);
@@ -139,14 +141,16 @@ export default function BookingModal({ services, promotions, loading = false, er
       }
     }
     return 60;
-  }, [service, promotion, serviceList]);
+  }, [service, asMaintenance, promotion, serviceList]);
 
   // Estimativa de valores (o valor FINAL é sempre recalculado no banco via create_booking)
   const pricing = useMemo(() => {
     let original = 0;
     let promoDiscount = 0;
     if (service) {
-      original = Number(service.promotional_price ?? service.price) || 0;
+      original = asMaintenance
+        ? Number(service.maintenance_promotional_price ?? service.maintenance_price) || 0
+        : Number(service.promotional_price ?? service.price) || 0;
     } else if (promotion) {
       const ids = asArray(promotion.service_ids);
       const sum = ids.length
@@ -163,7 +167,7 @@ export default function BookingModal({ services, promotions, loading = false, er
     const couponDiscount = appliedCoupon ? Number(appliedCoupon.discount_amount) || 0 : 0;
     const totalDiscount = Math.min(promoDiscount + couponDiscount, original);
     return { original, promoDiscount, couponDiscount, totalDiscount, final: Math.max(original - totalDiscount, 0) };
-  }, [service, promotion, appliedCoupon, serviceList]);
+  }, [service, asMaintenance, promotion, appliedCoupon, serviceList]);
 
   // Quando a promoção exige participantes, preparamos a lista de nomes
   useEffect(() => {
@@ -178,6 +182,18 @@ export default function BookingModal({ services, promotions, loading = false, er
   const choose = (type, item) => {
     setService(type === 'service' ? item : null);
     setPromotion(type === 'promotion' ? item : null);
+    setAsMaintenance(false);
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponMsg(null);
+    setStep(1);
+  };
+
+  // Manutenção do próprio serviço (preço/duração embutidos no registro)
+  const chooseMaintenance = (item) => {
+    setService(item);
+    setPromotion(null);
+    setAsMaintenance(true);
     setAppliedCoupon(null);
     setCouponInput('');
     setCouponMsg(null);
@@ -259,7 +275,7 @@ export default function BookingModal({ services, promotions, loading = false, er
         if (!a || typeof a.appointment_time !== 'string' || !a.appointment_time.includes(':')) return false;
         const [ah, am] = a.appointment_time.split(':').map(Number);
         const aStart = (ah || 0) * 60 + (am || 0);
-        const aDur = Number(a.services?.duration_minutes) || 60;
+        const aDur = Number(a.duration_minutes) || Number(a.services?.duration_minutes) || 60;
         return start < aStart + aDur && aStart < end;
       });
       out.push({ label, conflict });
@@ -387,6 +403,7 @@ export default function BookingModal({ services, promotions, loading = false, er
       const { data, error: err } = await supabase.rpc('create_booking', {
         p_service_id: service?.id ?? null,
         p_promotion_id: promotion?.id ?? null,
+        p_appointment_type: service && asMaintenance ? 'maintenance' : 'service',
         p_client_name: name.trim(),
         p_client_whatsapp: whatsapp.trim(),
         p_appointment_date: date,
@@ -407,7 +424,7 @@ export default function BookingModal({ services, promotions, loading = false, er
       setResult(data);
       const dateLabel = `${WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, ${fmtBR(date)}`;
       openWhatsApp(buildBookingMessage({
-        service: service?.name || promotion?.name,
+        service: service?.name ? (asMaintenance ? `${service.name} (Manutenção)` : service.name) : promotion?.name,
         date: dateLabel,
         time,
         name: name.trim(),
@@ -430,13 +447,15 @@ export default function BookingModal({ services, promotions, loading = false, er
   }
 
   function reset() {
-    setStep(0); setService(null); setPromotion(null); setDate(null); setTime(null);
+    setStep(0); setService(null); setAsMaintenance(false); setPromotion(null); setDate(null); setTime(null);
     setName(''); setWhatsapp(''); setNotes(''); setParticipants([]);
     setCouponInput(''); setAppliedCoupon(null); setCouponMsg(null);
     setPayment(null); setResult(null); setDone(false); setSubmitError(null);
   }
 
-  const selectedLabel = service?.name || promotion?.name || '';
+  const selectedLabel = service
+    ? `${service.name}${asMaintenance ? ' (Manutenção)' : ''}`
+    : promotion?.name || '';
   const isPromo = !!promotion;
 
   return (
@@ -517,17 +536,27 @@ export default function BookingModal({ services, promotions, loading = false, er
                         serviceList.length === 0 ? (
                           <p className="py-8 text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento. 💜</p>
                         ) : serviceList.map((s) => (
-                          <button
+                          <div
                             key={s.id}
-                            onClick={() => choose('service', s)}
-                            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-plum-500/20 bg-plum-900/30 px-4 py-3 text-left transition hover:border-lavender/50 hover:bg-plum-800/40"
+                            className="flex items-center justify-between gap-3 rounded-2xl border border-plum-500/20 bg-plum-900/30 px-4 py-3 transition hover:border-lavender/50 hover:bg-plum-800/40"
                           >
-                            <span>
+                            <button onClick={() => choose('service', s)} className="min-w-0 flex-1 text-left">
                               <span className="block text-sm font-medium text-plum-100">{s.name}</span>
                               <span className="block text-xs text-plum-200/60">{s.duration_minutes || 60} min</span>
-                            </span>
-                            <span className="text-sm text-lavender">{brl(s.promotional_price ?? s.price)}</span>
-                          </button>
+                            </button>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {s.maintenance_enabled && s.maintenance_price != null && (
+                                <button
+                                  onClick={() => chooseMaintenance(s)}
+                                  className="rounded-full border border-lavender/40 px-3 py-1.5 text-[11px] text-lavender transition hover:bg-lavender/10"
+                                  title={`Manutenção: ${brl(s.maintenance_promotional_price ?? s.maintenance_price)} · ${s.maintenance_duration_minutes || 60} min`}
+                                >
+                                  ↻ Manutenção
+                                </button>
+                              )}
+                              <button onClick={() => choose('service', s)} className="text-sm text-lavender">{brl(s.promotional_price ?? s.price)}</button>
+                            </div>
+                          </div>
                         ))
                       ) : promotionList.length === 0 ? (
                         <p className="py-8 text-center text-sm text-plum-200/70">Nenhuma promoção ativa no momento. 💜</p>

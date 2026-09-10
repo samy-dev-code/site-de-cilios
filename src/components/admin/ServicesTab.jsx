@@ -11,8 +11,8 @@ const parseBRL = (s) => {
 const EMPTY = {
   name: '', description: '', price: '', promotional_price: '', duration_minutes: 60,
   category_id: '', image_url: '', active: true, featured: false, archived: false, display_order: 0,
-  has_maintenance: false, maintenance_service_id: '', create_new_maint: false,
-  new_maint: { name: '', price: '', duration_minutes: 90 },
+  maintenance_enabled: false, maintenance_price: '', maintenance_promotional_price: '',
+  maintenance_duration_minutes: 60,
 };
 
 const fmtDate = (iso) => {
@@ -48,7 +48,7 @@ export default function ServicesTab({ onAudit }) {
   const load = useCallback(async () => {
     setLoading(true);
     const [svc, cats] = await Promise.all([
-      supabase.from('services').select('*, maintenance_service:maintenance_service_id(id, name, price, duration_minutes, active, archived)').order('display_order'),
+      supabase.from('services').select('*').order('display_order'),
       supabase.from('categories').select('*').order('display_order'),
     ]);
     if (svc.error) setError(svc.error.message); else setError(null);
@@ -102,10 +102,10 @@ export default function ServicesTab({ onAudit }) {
       category_id: s.category_id ?? '', image_url: s.image_url ?? '',
       active: s.active ?? true, featured: s.featured ?? false, archived: s.archived ?? false,
       display_order: s.display_order ?? 0,
-      has_maintenance: !!(s.maintenance_service_id && s.maintenance_service),
-      maintenance_service_id: s.maintenance_service_id ?? '',
-      create_new_maint: false,
-      new_maint: { name: '', price: '', duration_minutes: 90 },
+      maintenance_enabled: !!s.maintenance_enabled,
+      maintenance_price: s.maintenance_price != null ? String(s.maintenance_price).replace('.', ',') : '',
+      maintenance_promotional_price: s.maintenance_promotional_price != null ? String(s.maintenance_promotional_price).replace('.', ',') : '',
+      maintenance_duration_minutes: s.maintenance_duration_minutes ?? 60,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -134,32 +134,16 @@ export default function ServicesTab({ onAudit }) {
     if (form.promotional_price && !promo) return setError('Preço promocional inválido.');
     if (promo && promo >= price) return setError('O preço promocional deve ser MENOR que o preço normal.');
     if (!form.category_id) return setError('Selecione uma categoria.');
-    if (form.has_maintenance && !form.create_new_maint && !form.maintenance_service_id) return setError('Selecione o serviço de manutenção (ou cadastre um novo).');
-    if (form.has_maintenance && form.create_new_maint) {
-      if (!form.new_maint.name.trim()) return setError('Informe o nome da manutenção.');
-      if (!parseBRL(form.new_maint.price)) return setError('Informe um preço válido para a manutenção.');
+    if (form.maintenance_enabled) {
+      const mp = parseBRL(form.maintenance_price);
+      if (!mp) return setError('Informe um preço válido para a manutenção.');
+      const mpromo = form.maintenance_promotional_price ? parseBRL(form.maintenance_promotional_price) : null;
+      if (form.maintenance_promotional_price && !mpromo) return setError('Preço promocional da manutenção inválido.');
+      if (mpromo && mpromo >= mp) return setError('O preço promocional da manutenção deve ser MENOR que o preço normal.');
     }
     setSaving(true);
-    // Cria a manutenção como um serviço real antes de vincular
-    let maintenanceId = form.has_maintenance ? (form.maintenance_service_id || null) : null;
-    if (form.has_maintenance && form.create_new_maint) {
-      const maintPrice = parseBRL(form.new_maint.price);
-      const maxOrder = items.reduce((m, s) => Math.max(m, s.display_order ?? 0), 0);
-      const { data: newMaint, error: maintErr } = await supabase.from('services').insert({
-        name: form.new_maint.name.trim(),
-        description: `Manutenção de ${form.name.trim()}`,
-        price: maintPrice,
-        promotional_price: null,
-        duration_minutes: Number(form.new_maint.duration_minutes) || 90,
-        category_id: form.category_id,
-        image_url: form.image_url || null,
-        active: true, featured: false, archived: false,
-        display_order: maxOrder + 1,
-      }).select('id').single();
-      if (maintErr) { setSaving(false); return setError('Erro ao criar a manutenção: ' + maintErr.message); }
-      maintenanceId = newMaint.id;
-      await logAudit('criou serviço (manutenção)', 'service', newMaint.id, form.new_maint.name.trim(), { price: maintPrice });
-    }
+    const maintPrice = form.maintenance_enabled ? parseBRL(form.maintenance_price) : null;
+    const maintPromo = form.maintenance_enabled && form.maintenance_promotional_price ? parseBRL(form.maintenance_promotional_price) : null;
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
@@ -170,7 +154,11 @@ export default function ServicesTab({ onAudit }) {
       image_url: form.image_url || null,
       active: form.active, featured: form.featured, archived: form.archived,
       display_order: Number(form.display_order) || 0,
-      maintenance_service_id: maintenanceId,
+      maintenance_enabled: !!form.maintenance_enabled,
+      maintenance_price: maintPrice,
+      maintenance_promotional_price: maintPromo,
+      maintenance_duration_minutes: form.maintenance_enabled ? (Number(form.maintenance_duration_minutes) || 60) : null,
+      maintenance_service_id: null,
     };
     let err;
     if (editingId) {
@@ -355,56 +343,31 @@ export default function ServicesTab({ onAudit }) {
             </div>
           </div>
 
-          {/* Manutenção vinculada */}
+          {/* Manutenção embutida no próprio serviço */}
           <div className="rounded-2xl border border-lavender/20 bg-lavender/[0.04] p-4 space-y-3">
             <label className="flex items-center gap-2 text-sm font-medium text-plum-100">
               <input
-                type="checkbox" checked={form.has_maintenance}
-                onChange={(e) => setForm({ ...form, has_maintenance: e.target.checked, create_new_maint: false, maintenance_service_id: e.target.checked ? form.maintenance_service_id : '' })}
+                type="checkbox" checked={form.maintenance_enabled}
+                onChange={(e) => setForm({ ...form, maintenance_enabled: e.target.checked })}
                 className="accent-[#c9a7e8]"
-              /> Possui manutenção?
+              /> Permitir manutenção?
             </label>
-            {form.has_maintenance && (
-              <>
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm text-plum-200/80">
-                    <input type="radio" name="maint-mode" checked={!form.create_new_maint} onChange={() => setForm({ ...form, create_new_maint: false })} className="accent-[#c9a7e8]" /> Selecionar existente
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-plum-200/80">
-                    <input type="radio" name="maint-mode" checked={form.create_new_maint} onChange={() => setForm({ ...form, create_new_maint: true })} className="accent-[#c9a7e8]" /> Cadastrar nova
-                  </label>
+            {form.maintenance_enabled && (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className={labelCls}>Preço da manutenção (R$) *</label>
+                  <input inputMode="decimal" value={form.maintenance_price} onChange={(e) => setForm({ ...form, maintenance_price: e.target.value })} placeholder="80,00" className={inputCls} />
                 </div>
-                {!form.create_new_maint ? (
-                  <div>
-                    <label className={labelCls}>Serviço de manutenção</label>
-                    <select value={form.maintenance_service_id} onChange={(e) => setForm({ ...form, maintenance_service_id: e.target.value })} className={inputCls}>
-                      <option value="">Selecione…</option>
-                      {items
-                        .filter((s) => s.id !== editingId)
-                        .map((s) => (
-                          <option key={s.id} value={s.id}>{s.name} — {brl(s.price)} · {fmtDur(s.duration_minutes)}</option>
-                        ))}
-                    </select>
-                    {items.length === 0 && <p className="mt-1 text-xs text-plum-300/60">Nenhum serviço cadastrado. Use "Cadastrar nova".</p>}
-                  </div>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="sm:col-span-3">
-                      <label className={labelCls}>Nome da manutenção *</label>
-                      <input value={form.new_maint.name} onChange={(e) => setForm({ ...form, new_maint: { ...form.new_maint, name: e.target.value } })} placeholder={`Manutenção ${form.name || ''}`.trim()} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Preço (R$) *</label>
-                      <input inputMode="decimal" value={form.new_maint.price} onChange={(e) => setForm({ ...form, new_maint: { ...form.new_maint, price: e.target.value } })} placeholder="80,00" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Duração (min) *</label>
-                      <input type="number" min={15} step={5} value={form.new_maint.duration_minutes} onChange={(e) => setForm({ ...form, new_maint: { ...form.new_maint, duration_minutes: e.target.value } })} className={inputCls} />
-                    </div>
-                  </div>
-                )}
-                <p className="text-xs text-plum-300/60">A manutenção aparece no site como um serviço real (preço, duração, promoções e agendamento próprios).</p>
-              </>
+                <div>
+                  <label className={labelCls}>Preço promocional</label>
+                  <input inputMode="decimal" value={form.maintenance_promotional_price} onChange={(e) => setForm({ ...form, maintenance_promotional_price: e.target.value })} placeholder="opcional" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Duração da manutenção (min) *</label>
+                  <input type="number" min={15} step={5} value={form.maintenance_duration_minutes} onChange={(e) => setForm({ ...form, maintenance_duration_minutes: e.target.value })} className={inputCls} />
+                </div>
+                <p className="text-xs text-plum-300/60 sm:col-span-3">A manutenção fica vinculada a este serviço — não é criado um serviço separado. A cliente pode agendar a manutenção deste serviço pelo site, com preço e duração próprios.</p>
+              </div>
             )}
           </div>
           <div className="flex flex-wrap gap-3">
@@ -444,8 +407,8 @@ export default function ServicesTab({ onAudit }) {
                     </>
                   ) : brl(s.price)}
                 </p>
-                {s.maintenance_service?.name && (
-                  <p className="text-[11px] text-plum-200/60">↻ Manutenção: <span className="text-lavender">{s.maintenance_service.name}</span> · {brl(s.maintenance_service.price)} · {fmtDur(s.maintenance_service.duration_minutes)}</p>
+                {s.maintenance_enabled && s.maintenance_price != null && (
+                  <p className="text-[11px] text-plum-200/60">↻ Manutenção: {brl(s.maintenance_promotional_price ?? s.maintenance_price)}{s.maintenance_promotional_price && <span className="line-through opacity-50"> {brl(s.maintenance_price)}</span>} · {fmtDur(s.maintenance_duration_minutes ?? s.duration_minutes)}</p>
                 )}
                 {s.description && <p className="mt-1 text-xs text-plum-200/60 max-w-xl line-clamp-2">{s.description}</p>}
                 <p className="mt-1 text-[10px] text-plum-300/40">Ordem {s.display_order ?? 0} · criado {fmtDate(s.created_at)} · alterado {fmtDate(s.updated_at || s.created_at)}</p>

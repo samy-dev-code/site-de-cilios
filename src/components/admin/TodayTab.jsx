@@ -209,7 +209,7 @@ export default function TodayTab() {
 
 function TodayCard({ a, busyId, onChangeStatus, expanded, onToggleDetails, history, onReschedule, onMaintenance }) {
   const st = STATUS[a.status] ?? STATUS.pending;
-  const dur = a.services?.duration_minutes ?? 60;
+  const dur = a.duration_minutes ?? a.services?.duration_minutes ?? 60;
   const isPromo = Boolean(a.promotion_id && a.promotions);
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const [h, m] = String(a.appointment_time).split(':').map(Number);
@@ -332,7 +332,7 @@ function RescheduleForm({ a, onClose, onDone }) {
       <form onClick={(e) => e.stopPropagation()} onSubmit={submit} className="glass w-full max-w-md rounded-3xl p-6 space-y-4">
         <h4 className="font-serif text-xl text-lavender-soft">Reagendar: {a.client_name}</h4>
         <p className="text-xs text-plum-200/70">
-          Atual: {a.appointment_date.split('-').reverse().join('/')} às {a.appointment_time.slice(0, 5)} · {a.services?.duration_minutes ?? 60} min
+          Atual: {a.appointment_date.split('-').reverse().join('/')} às {a.appointment_time.slice(0, 5)} · {a.duration_minutes ?? a.services?.duration_minutes ?? 60} min
         </p>
         <div className="flex gap-3">
           <div className="flex-1">
