@@ -1,9 +1,9 @@
 /** Preview fiel do banner hero full-width como aparece no site (mesmas classes do BannerCarousel). */
 const HEIGHTS = {
-  compact: 'h-[55vw] max-h-[420px] min-h-[240px] sm:h-[40vh] md:h-[52vh] lg:h-[60vh]',
-  default: 'h-[70vw] max-h-[560px] min-h-[280px] sm:h-[52vh] md:h-[62vh] lg:h-[72vh]',
-  tall: 'h-[85vw] max-h-[720px] min-h-[320px] sm:h-[64vh] md:h-[76vh] lg:h-[86vh]',
-  fullscreen: 'h-[92vw] max-h-[820px] min-h-[360px] sm:h-[76vh] md:h-[86vh] lg:h-[100vh]',
+  compact: 'h-[46svh] min-h-[240px] max-h-[420px]',
+  default: 'h-[58svh] min-h-[300px] max-h-[560px]',
+  tall: 'h-[72svh] min-h-[360px] max-h-[720px]',
+  fullscreen: 'h-[86svh] min-h-[420px] max-h-[820px]',
 };
 const FITS = ['cover', 'contain'];
 const POS = {
@@ -21,7 +21,9 @@ const CONTENT_POS = {
   'bottom-right': 'items-end justify-end text-right px-6 pb-12 sm:px-14',
 };
 const TITLE_SIZES = {
-  normal: 'text-3xl sm:text-5xl', large: 'text-4xl sm:text-6xl', huge: 'text-5xl sm:text-7xl',
+  normal: 'text-[clamp(1.6rem,6.5vw,3.75rem)]',
+  large: 'text-[clamp(1.9rem,7.5vw,4.5rem)]',
+  huge: 'text-[clamp(2.15rem,8.5vw,6rem)]',
 };
 
 export default function BannerPreview({ banner, viewport = 'desktop' }) {

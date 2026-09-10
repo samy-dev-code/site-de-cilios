@@ -6,12 +6,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  * tamanho do título, overlay e imagens separadas para desktop/mobile.
  */
 
-// Alturas por modo: [mobile, desktop]
+// Alturas por modo — mobile usa svh (ignora a barra de endereço que abre/fecha)
 const HEIGHTS = {
-  compact: ['h-[55vw] max-h-[420px] min-h-[280px] sm:h-[40vh] md:h-[52vh] lg:h-[60vh]'],
-  default: ['h-[70vw] max-h-[560px] min-h-[320px] sm:h-[52vh] md:h-[62vh] lg:h-[72vh]'],
-  tall: ['h-[85vw] max-h-[720px] min-h-[380px] sm:h-[64vh] md:h-[76vh] lg:h-[86vh]'],
-  fullscreen: ['h-[92vw] max-h-[820px] min-h-[420px] sm:h-[76vh] md:h-[86vh] lg:h-[100vh]'],
+  compact: 'h-[46svh] min-h-[240px] max-h-[420px]',
+  default: 'h-[58svh] min-h-[300px] max-h-[560px]',
+  tall: 'h-[72svh] min-h-[360px] max-h-[720px]',
+  fullscreen: 'h-[86svh] min-h-[420px] max-h-[820px]',
 };
 
 const FITS = ['cover', 'contain'];
@@ -28,18 +28,19 @@ const POS = {
 };
 
 const CONTENT_POS = {
-  center: 'items-center justify-center text-center px-8',
-  left: 'items-center justify-start text-left px-8 sm:px-16 lg:px-24',
-  right: 'items-center justify-end text-right px-8 sm:px-16 lg:px-24',
-  'bottom-left': 'items-end justify-start text-left px-8 pb-16 sm:px-16 lg:px-24 sm:pb-20',
-  'bottom-center': 'items-end justify-center text-center px-8 pb-16 sm:pb-20',
-  'bottom-right': 'items-end justify-end text-right px-8 pb-16 sm:px-16 lg:px-24 sm:pb-20',
+  center: 'items-center justify-center text-center px-5 sm:px-8',
+  left: 'items-center justify-start text-left px-5 sm:px-16 lg:px-24',
+  right: 'items-center justify-end text-right px-5 sm:px-16 lg:px-24',
+  'bottom-left': 'items-end justify-start text-left px-5 pb-16 sm:px-16 lg:px-24 sm:pb-20',
+  'bottom-center': 'items-end justify-center text-center px-5 pb-16 sm:pb-20',
+  'bottom-right': 'items-end justify-end text-right px-5 pb-16 sm:px-16 lg:px-24 sm:pb-20',
 };
 
+// Tamanhos com clamp: crescem com a largura da tela (legíveis de 320px ao desktop)
 const TITLE_SIZES = {
-  normal: 'text-3xl sm:text-5xl lg:text-6xl',
-  large: 'text-4xl sm:text-6xl lg:text-7xl',
-  huge: 'text-5xl sm:text-7xl lg:text-8xl',
+  normal: 'text-[clamp(1.6rem,6.5vw,3.75rem)]',
+  large: 'text-[clamp(1.9rem,7.5vw,4.5rem)]',
+  huge: 'text-[clamp(2.15rem,8.5vw,6rem)]',
 };
 
 const slideHeight = (mode) => HEIGHTS[mode] || HEIGHTS.default;
@@ -68,6 +69,7 @@ function BannerSlide({ banner, active, isFirst }) {
             alt={banner.title ?? 'Banner promocional'}
             loading={isFirst && active ? 'eager' : 'lazy'}
             decoding="async"
+            draggable={false}
             fetchpriority={isFirst ? 'high' : undefined}
             className={`h-full w-full ${fit === 'contain' ? 'object-contain bg-[#0a0510]' : 'object-cover'} ${posClass(banner.object_position)}`}
             onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
@@ -197,7 +199,7 @@ export default function BannerCarousel({ banners }) {
 
   return (
     <section
-      className="relative left-1/2 w-screen -translate-x-1/2"
+      className="relative w-full overflow-x-clip"
       aria-roledescription="carousel"
       aria-label="Promoções"
       onMouseEnter={() => setPaused(true)}
@@ -209,7 +211,7 @@ export default function BannerCarousel({ banners }) {
       {/* Faixa luminosa premium acima do banner */}
       <div aria-hidden className="h-px w-full bg-gradient-to-r from-transparent via-plum-400/40 to-transparent" />
 
-      <div className={`group relative w-full overflow-hidden ${slideHeight(current?.height_mode)}`}>
+      <div className={`group relative w-full touch-pan-y select-none overflow-hidden ${slideHeight(current?.height_mode)}`}>
         {slides.map((b, i) => (
           <BannerSlide key={b.id} banner={b} active={i === index} isFirst={i === 0} />
         ))}
