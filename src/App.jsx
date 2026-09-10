@@ -200,10 +200,16 @@ function SiteHome() {
 
   // Filtro de categoria escolhido pelo visitante
   const [categoryFilter, setCategoryFilter] = useState(null);
+  const [showAllServices, setShowAllServices] = useState(false);
   const allServices = asArray(services.data);
-  const visibleServices = categoryFilter
+  const filteredServices = categoryFilter
     ? allServices.filter((s) => s.categories?.slug === categoryFilter)
     : allServices;
+  // Home enxuta: no máximo 4 serviços visíveis, com botão para ver todos
+  const MAX_HOME_SERVICES = 4;
+  const hasMoreServices = filteredServices.length > MAX_HOME_SERVICES;
+  const visibleServices =
+    hasMoreServices && !showAllServices ? filteredServices.slice(0, MAX_HOME_SERVICES) : filteredServices;
   const featured = allServices.filter((s) => s.featured);
   const activeCategories = asArray(categories.data).filter((c) =>
     allServices.some((s) => s.categories?.slug === c.slug)
@@ -319,6 +325,21 @@ function SiteHome() {
             ) : (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {visibleServices.map((s) => <ServiceCard key={s.id} service={s} onSchedule={scheduleService} />)}
+              </div>
+            )}
+
+            {/* Botão para revelar todos os serviços (home enxuta) */}
+            {hasMoreServices && !showAllServices && (
+              <div className="mt-10 text-center">
+                <button
+                  onClick={() => setShowAllServices(true)}
+                  className="btn-lux rounded-full border border-lavender/40 bg-plum-900/40 px-8 py-3.5 text-sm uppercase tracking-[0.2em] text-lavender transition hover:border-lavender/70 hover:bg-plum-800/50"
+                >
+                  Veja todos os nossos serviços ✦
+                </button>
+                <p className="mt-3 text-xs text-plum-200/50">
+                  +{filteredServices.length - MAX_HOME_SERVICES} {filteredServices.length - MAX_HOME_SERVICES === 1 ? 'serviço' : 'serviços'} disponíveis
+                </p>
               </div>
             )}
           </>
