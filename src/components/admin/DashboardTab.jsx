@@ -37,7 +37,7 @@ export default function DashboardTab() {
       const [svc, cats, appts, logs, hist] = await Promise.all([
         supabase.from('services').select('*'),
         supabase.from('categories').select('*'),
-        supabase.from('appointments').select('id, service_id, appointment_date, status, created_at'),
+        supabase.from('appointments').select('id, service_id, appointment_date, status, created_at, final_amount, revenue_confirmed_at'),
         supabase.from('admin_audit_log').select('*').order('created_at', { ascending: false }).limit(8),
         supabase.from('service_price_history').select('*, services(name)').order('created_at', { ascending: false }).limit(6),
       ]);
@@ -57,9 +57,25 @@ export default function DashboardTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Atualização em tempo real do faturamento quando um agendamento mudar de status
+  useEffect(() => {
+    const channel = supabase
+      .channel('dashboard-appointments')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [load]);
+
   const stats = useMemo(() => {
     const svc = asArray(services);
     const upcoming = asArray(appointments).filter((a) => a.appointment_date >= new Date().toISOString().slice(0, 10));
+    // Receita confirmada: apenas agendamentos que passaram por "Confirmar agendamento"
+    // (selo revenue_confirmed_at gravado no banco — idempotente e sem dupla contagem).
+    const revenueAppointments = asArray(appointments).filter((a) => a.revenue_confirmed_at);
+    const revenue = revenueAppointments.reduce((s, a) => s + Number(a.final_amount ?? 0), 0);
+    const pendingRevenue = asArray(appointments)
+      .filter((a) => a.status === 'pending' && !a.revenue_confirmed_at)
+      .reduce((s, a) => s + Number(a.final_amount ?? 0), 0);
     return {
       active: svc.filter((s) => s.active && !s.archived).length,
       total: svc.length,
@@ -68,6 +84,8 @@ export default function DashboardTab() {
       upcoming: upcoming.length,
       pending: asArray(appointments).filter((a) => a.status === 'pending').length,
       cats: asArray(categories).filter((c) => c.active).length,
+      revenue,
+      pendingRevenue,
     };
   }, [services, categories, appointments]);
 
@@ -88,7 +106,8 @@ export default function DashboardTab() {
     <div className="space-y-6">
       {error && <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-200">{error}</p>}
 
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-5">
+        <Card label="Faturamento confirmado" value={brl(stats.revenue)} hint={stats.pendingRevenue > 0 ? `+ ${brl(stats.pendingRevenue)} pendente(s)` : 'receita confirmada'} icon="💰" />
         <Card label="Serviços ativos" value={stats.active} hint={`de ${stats.total} cadastrados`} icon="✦" />
         <Card label="Agendamentos futuros" value={stats.upcoming} hint={stats.pending ? `${stats.pending} pendente(s)` : 'em dia'} icon="📅" />
         <Card label="Destaques na home" value={stats.featured} icon="★" />
