@@ -11,6 +11,7 @@ const STATUS = {
 };
 const toISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const fmtBR = (iso) => { const [y, m, d] = iso.split('-').map(Number); return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`; };
+const brl = (n) => `R$ ${Number(n ?? 0).toFixed(2).replace('.', ',')}`;
 
 function timeToMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 
@@ -32,7 +33,10 @@ export default function AgendaTab() {
   const load = useCallback(async () => {
     setLoading(true);
     const [a, s] = await Promise.all([
-      supabase.from('appointments').select('*, services(name, duration_minutes, price)').order('appointment_date').order('appointment_time'),
+      supabase
+        .from('appointments')
+        .select('*, services(name, duration_minutes, price), promotions(name, promo_type, regular_price, promotional_price, participants)')
+        .order('appointment_date').order('appointment_time'),
       supabase.from('services').select('*').order('sort_order'),
     ]);
     if (a.error || s.error) setError(a.error?.message || s.error?.message || 'Erro ao carregar a agenda.');
@@ -230,6 +234,8 @@ export default function AgendaTab() {
 function AppointmentRow({ a, busyId, setStatus, remove, setEditing, showDate }) {
   const st = STATUS[a.status] ?? STATUS.pending;
   const dur = a.services?.duration_minutes ?? 60;
+  const promo = a.promotions;
+  const hasAmount = a.final_amount != null;
   return (
     <div className="glass glass-hover rounded-2xl p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -240,9 +246,27 @@ function AppointmentRow({ a, busyId, setStatus, remove, setEditing, showDate }) 
           <p className="text-xs text-plum-200/70">
             {showDate ? `${fmtBR(a.appointment_date)} · ` : ''}{a.appointment_time.slice(0, 5)} · {dur} min · {a.services?.name ?? 'Serviço removido'}
           </p>
+          {promo && (
+            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-plum-500/15 border border-lavender/30 px-2 py-0.5 text-[10px] text-lavender">
+              🎁 Promoção: {promo.name} · {a.participants_count || 1} pess.
+            </p>
+          )}
           {a.notes && <p className="mt-1 text-xs text-plum-200/60 italic">“{a.notes}”</p>}
         </div>
-        <span className={`rounded-full border px-3 py-1 text-[11px] ${st.cls}`}>{st.label}</span>
+        <div className="flex flex-col items-end gap-1.5">
+          <span className={`rounded-full border px-3 py-1 text-[11px] ${st.cls}`}>{st.label}</span>
+          {hasAmount && (
+            <div className="text-right">
+              {a.promotion_discount > 0 && (
+                <p className="text-[10px] text-plum-200/60">
+                  {a.original_amount != null && <span className="line-through">{brl(a.original_amount)}</span>} −{brl(a.promotion_discount)}
+                </p>
+              )}
+              <p className="text-sm font-semibold text-lavender">{brl(a.final_amount)}</p>
+              <p className="text-[9px] text-plum-300/40">valor cobrado</p>
+            </div>
+          )}
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <a

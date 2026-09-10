@@ -154,16 +154,29 @@ export default function BookingModal({ services, promotions, loading = false, er
         : Number(service.promotional_price ?? service.price) || 0;
     } else if (promotion) {
       const ids = asArray(promotion.service_ids);
-      const sum = ids.length
-        ? serviceList
-            .filter((s) => ids.includes(s.id))
-            .reduce((acc, s) => acc + (Number(s.promotional_price ?? s.price) || 0), 0)
-        : 0;
-      original = promotion.price != null ? Number(promotion.price) : sum;
-      const dv = Number(promotion.discount_value) || 0;
-      promoDiscount = promotion.discount_type === 'percentage'
-        ? Math.round(original * dv) / 100
-        : Math.min(dv, original);
+      const participants = Math.max(Number(promotion.participants) || 1, 1);
+      const perPerson = promotion.regular_price != null;
+      if (perPerson) {
+        const reg = Number(promotion.regular_price) || 0;
+        const promo = promotion.promotional_price != null ? Number(promotion.promotional_price) : NaN;
+        original = reg * participants;
+        promoDiscount = Number.isFinite(promo)
+          ? Math.max(original - promo * participants, 0)
+          : (promotion.discount_type === 'percentage'
+              ? Math.round(original * (Number(promotion.discount_value) || 0)) / 100
+              : Math.min(Number(promotion.discount_value) || 0, original));
+      } else {
+        const sum = ids.length
+          ? serviceList
+              .filter((s) => ids.includes(s.id))
+              .reduce((acc, s) => acc + (Number(s.promotional_price ?? s.price) || 0), 0)
+          : 0;
+        original = promotion.price != null ? Number(promotion.price) : sum;
+        const dv = Number(promotion.discount_value) || 0;
+        promoDiscount = promotion.discount_type === 'percentage'
+          ? Math.round(original * dv) / 100
+          : Math.min(dv, original);
+      }
     }
     const couponDiscount = appliedCoupon ? Number(appliedCoupon.discount_amount) || 0 : 0;
     const totalDiscount = Math.min(promoDiscount + couponDiscount, original);
@@ -599,27 +612,51 @@ export default function BookingModal({ services, promotions, loading = false, er
                         <p className="py-8 text-center text-sm text-plum-200/70">Nenhuma promoção ativa no momento. 💜</p>
                       ) : promotionList.map((p) => {
                         const ids = asArray(p.service_ids);
-                        const base = p.price != null
-                          ? Number(p.price)
-                          : serviceList.filter((s) => ids.includes(s.id)).reduce((a, s) => a + (Number(s.promotional_price ?? s.price) || 0), 0);
-                        const disc = p.discount_type === 'percentage'
-                          ? Math.round(base * (Number(p.discount_value) || 0)) / 100
-                          : Math.min(Number(p.discount_value) || 0, base);
+                        const participants = Math.max(Number(p.participants) || 1, 1);
+                        const perPerson = p.regular_price != null;
+                        const base = perPerson
+                          ? Number(p.regular_price)
+                          : p.price != null
+                            ? Number(p.price)
+                            : serviceList.filter((s) => ids.includes(s.id)).reduce((a, s) => a + (Number(s.promotional_price ?? s.price) || 0), 0);
+                        const finalVal = perPerson && p.promotional_price != null
+                          ? Number(p.promotional_price)
+                          : Math.max(base - (p.discount_type === 'percentage'
+                              ? Math.round(base * (Number(p.discount_value) || 0)) / 100
+                              : Math.min(Number(p.discount_value) || 0, base)), 0);
+                        const totalBase = perPerson ? base * participants : base;
+                        const totalFinal = perPerson ? finalVal * participants : finalVal;
+                        const weekdaysOk = asArray(p.weekdays).length;
                         return (
                           <button
                             key={p.id}
                             onClick={() => choose('promotion', p)}
                             className="flex w-full items-center justify-between gap-3 rounded-2xl border border-plum-500/20 bg-plum-900/30 px-4 py-3 text-left transition hover:border-lavender/50 hover:bg-plum-800/40"
                           >
-                            <span>
+                            <span className="min-w-0">
                               <span className="block text-sm font-medium text-plum-100">{p.name}</span>
                               <span className="block text-xs text-plum-200/60">
-                                {p.participants > 1 ? `${p.participants} pessoas · ` : ''}{ids.length || 0} serviço(s)
+                                {participants > 1 ? `${participants} pessoas · ` : ''}
+                                {perPerson ? `${brl(finalVal)} / pessoa` : `${brl(totalFinal)} total`}
+                                {ids.length ? ` · ${ids.length} serviço(s)` : ''}
                               </span>
+                              {p.description && <span className="mt-0.5 block text-[11px] text-plum-200/50 line-clamp-1">{p.description}</span>}
+                              {weekdaysOk > 0 && weekdaysOk < 7 && (
+                                <span className="mt-0.5 block text-[10px] text-lavender/70">
+                                  Vale em: {weekdaysOk === 1 ? 'apenas 1 dia' : `${weekdaysOk} dias da semana`}
+                                </span>
+                              )}
+                              {p.allowed_time_start && p.allowed_time_end && (
+                                <span className="mt-0.5 block text-[10px] text-lavender/70">
+                                  Horário: {String(p.allowed_time_start).slice(0, 5)} às {String(p.allowed_time_end).slice(0, 5)}
+                                </span>
+                              )}
                             </span>
-                            <span className="text-right">
-                              {disc > 0 && <span className="block text-xs text-plum-200/50 line-through">{brl(base)}</span>}
-                              <span className="text-sm text-lavender">{brl(Math.max(base - disc, 0))}</span>
+                            <span className="text-right shrink-0">
+                              {totalBase > totalFinal && <span className="block text-xs text-plum-200/50 line-through">{brl(totalBase)}</span>}
+                              <span className="text-sm text-lavender">
+                                {perPerson ? `${brl(totalFinal)} (${participants} pess.)` : brl(totalFinal)}
+                              </span>
                             </span>
                           </button>
                         );

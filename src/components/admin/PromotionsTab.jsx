@@ -8,10 +8,21 @@ const parseBRL = (s) => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
+const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const PROMO_TYPE_LABELS = {
+  group: 'Grupo',
+  combo: 'Combo',
+  discount: 'Desconto',
+};
+
 const EMPTY = {
   name: '', description: '', image_url: '',
+  promo_type: 'group',
   discount_type: 'percentage', discount_value: '',
   participants: 1, service_ids: [], price: '',
+  regular_price: '', promotional_price: '',
+  weekdays: [0, 1, 2, 3, 4, 5, 6],
+  allowed_time_start: '', allowed_time_end: '',
   start_date: '', end_date: '',
   active: true, featured: false, archived: false, display_order: 0,
 };
@@ -76,16 +87,29 @@ export default function PromotionsTab({ onAudit }) {
     return [...list].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0) || (a.name ?? '').localeCompare(b.name ?? ''));
   }, [items, search, statusFilter]);
 
+  const weekdayLabel = (arr) => {
+    const d = Array.isArray(arr) ? arr : [0, 1, 2, 3, 4, 5, 6];
+    if (d.length >= 7) return 'Todos os dias';
+    if (!d.length) return 'Nenhum dia selecionado';
+    return d.slice().sort((a, b) => a - b).map((i) => WEEKDAYS[i] ?? i).join(', ');
+  };
+
   function startEdit(p) {
     setEditingId(p.id);
     setShowForm(true);
     setForm({
       name: p.name ?? '', description: p.description ?? '', image_url: p.image_url ?? '',
+      promo_type: p.promo_type ?? 'group',
       discount_type: p.discount_type ?? 'percentage',
       discount_value: p.discount_value != null ? String(p.discount_value).replace('.', ',') : '',
       participants: p.participants ?? 1,
       service_ids: asArray(p.service_ids),
       price: p.price != null ? String(p.price).replace('.', ',') : '',
+      regular_price: p.regular_price != null ? String(p.regular_price).replace('.', ',') : '',
+      promotional_price: p.promotional_price != null ? String(p.promotional_price).replace('.', ',') : '',
+      weekdays: Array.isArray(p.weekdays) && p.weekdays.length ? [...p.weekdays] : [0, 1, 2, 3, 4, 5, 6],
+      allowed_time_start: p.allowed_time_start ? p.allowed_time_start.slice(0, 5) : '',
+      allowed_time_end: p.allowed_time_end ? p.allowed_time_end.slice(0, 5) : '',
       start_date: p.start_date ?? '', end_date: p.end_date ?? '',
       active: p.active ?? true, featured: p.featured ?? false, archived: p.archived ?? false,
       display_order: p.display_order ?? 0,
@@ -114,27 +138,55 @@ export default function PromotionsTab({ onAudit }) {
     }));
   }
 
+  function toggleWeekday(i) {
+    setForm((f) => ({
+      ...f,
+      weekdays: f.weekdays.includes(i) ? f.weekdays.filter((w) => w !== i) : [...f.weekdays, i],
+    }));
+  }
+
   async function submit(e) {
     e.preventDefault();
     setError(null); setNotice(null);
     if (!form.name.trim()) return setError('Informe o nome da promoção.');
+
+    // Valida a configuração de preço por pessoa se informada
+    const regularPrice = form.regular_price ? parseBRL(form.regular_price) : null;
+    const promoPrice = form.promotional_price ? parseBRL(form.promotional_price) : null;
+    if (form.regular_price && regularPrice == null) return setError('Preço normal inválido.');
+    if (form.promotional_price && promoPrice == null) return setError('Preço promocional inválido.');
+    if (regularPrice != null && promoPrice != null && promoPrice > regularPrice) {
+      return setError('O preço promocional não pode ser maior que o preço normal.');
+    }
+    if (form.allowed_time_start !== form.allowed_time_end && !(form.allowed_time_start && form.allowed_time_end)) {
+      return setError('Preencha início e fim dos horários permitidos juntos.');
+    }
+
+    // Desconto clássico apenas se não estiver usando preço por pessoa
     const dv = parseBRL(form.discount_value);
     if (dv == null || dv < 0) return setError('Informe um valor de desconto válido.');
     if (form.discount_type === 'percentage' && dv > 100) return setError('Desconto percentual não pode passar de 100%.');
-    if (!form.service_ids.length && !form.price) return setError('Selecione ao menos um serviço incluído ou defina um preço fixo para a promoção.');
+    if (!form.service_ids.length && !form.price && regularPrice == null) return setError('Selecione ao menos um serviço incluído ou defina um preço para a promoção.');
     const price = form.price ? parseBRL(form.price) : null;
     if (form.price && !price) return setError('Preço da promoção inválido.');
     if (form.start_date && form.end_date && form.end_date < form.start_date) return setError('A data final deve ser depois da data inicial.');
+
     setSaving(true);
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
       image_url: form.image_url || null,
+      promo_type: form.promo_type || 'group',
       discount_type: form.discount_type,
       discount_value: dv,
       participants: Math.min(Math.max(Number(form.participants) || 1, 1), 20),
       service_ids: form.service_ids,
       price,
+      regular_price: regularPrice != null ? regularPrice : null,
+      promotional_price: promoPrice != null ? promoPrice : null,
+      weekdays: form.weekdays.length ? form.weekdays : [0, 1, 2, 3, 4, 5, 6],
+      allowed_time_start: form.allowed_time_start || null,
+      allowed_time_end: form.allowed_time_end || null,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       active: form.active, featured: form.featured, archived: form.archived,
@@ -170,8 +222,11 @@ export default function PromotionsTab({ onAudit }) {
   async function duplicate(p) {
     const { error: err } = await supabase.from('promotions').insert({
       name: `${p.name} (cópia)`, description: p.description, image_url: p.image_url,
+      promo_type: p.promo_type || 'group',
       discount_type: p.discount_type, discount_value: p.discount_value,
       participants: p.participants, service_ids: p.service_ids, price: p.price,
+      regular_price: p.regular_price, promotional_price: p.promotional_price,
+      weekdays: p.weekdays, allowed_time_start: p.allowed_time_start, allowed_time_end: p.allowed_time_end,
       start_date: p.start_date, end_date: p.end_date,
       active: false, featured: false, archived: false, display_order: (p.display_order ?? 0) + 1,
     });
@@ -238,28 +293,59 @@ export default function PromotionsTab({ onAudit }) {
               <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Duas Amigas" className={inputCls} />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>Descrição</label>
-              <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Traga uma amiga e ganhem desconto!" className={`${inputCls} resize-none`} />
+              <label className={labelCls}>Descrição / Regras</label>
+              <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Traga uma amiga e ganhem desconto no serviço!" className={`${inputCls} resize-none`} />
             </div>
             <div>
-              <label className={labelCls}>Tipo de desconto *</label>
+              <label className={labelCls}>Tipo de promoção</label>
+              <select value={form.promo_type} onChange={(e) => setForm({ ...form, promo_type: e.target.value })} className={inputCls}>
+                <option value="group">Grupo (múltiplas pessoas)</option>
+                <option value="combo">Combo (vários serviços)</option>
+                <option value="discount">Desconto</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Participantes * (1 = individual)</label>
+              <input required type="number" min={1} max={20} value={form.participants} onChange={(e) => setForm({ ...form, participants: e.target.value })} className={inputCls} />
+              <p className="mt-1 text-[10px] text-plum-200/50">Se 2+, a cliente precisa informar todos os nomes.</p>
+            </div>
+
+            <div className="sm:col-span-2 border-t border-white/10 pt-3">
+              <p className="mb-2 text-xs uppercase tracking-widest text-lavender/70">Preço por pessoa <span className="normal-case text-plum-200/50">(recomendado — mostrado no site como “R$ 120 / pessoa”)</span></p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls}>Preço normal (por pessoa)</label>
+                  <input inputMode="decimal" value={form.regular_price} onChange={(e) => setForm({ ...form, regular_price: e.target.value })} placeholder="150,00" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Preço promocional (por pessoa)</label>
+                  <input inputMode="decimal" value={form.promotional_price} onChange={(e) => setForm({ ...form, promotional_price: e.target.value })} placeholder="120,00" className={inputCls} />
+                </div>
+              </div>
+              {form.regular_price && form.promotional_price && (
+                <p className="mt-2 text-xs text-plum-200/70">
+                  Para {form.participants} participante(s): de <span className="line-through opacity-60">{brl(parseBRL(form.regular_price) * Number(form.participants))}</span>{' '}
+                  por <span className="font-semibold text-lavender">{brl(parseBRL(form.promotional_price) * Number(form.participants))}</span>
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className={labelCls}>Tipo de desconto (fallback)</label>
               <select value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value })} className={inputCls}>
                 <option value="percentage">Porcentagem (%)</option>
                 <option value="fixed">Valor fixo (R$)</option>
               </select>
             </div>
             <div>
-              <label className={labelCls}>{form.discount_type === 'percentage' ? 'Desconto (%) *' : 'Desconto (R$) *'}</label>
-              <input required inputMode="decimal" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} placeholder={form.discount_type === 'percentage' ? '10' : '15,00'} className={inputCls} />
+              <label className={labelCls}>{form.discount_type === 'percentage' ? 'Desconto (%)' : 'Desconto (R$)'}</label>
+              <input inputMode="decimal" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: e.target.value })} placeholder="Desconto extra além do preço promocional" className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Participantes * (1 = individual)</label>
-              <input required type="number" min={1} max={20} value={form.participants} onChange={(e) => setForm({ ...form, participants: e.target.value })} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Preço da promoção (opcional)</label>
+              <label className={labelCls}>Preço fixo da promoção (opcional)</label>
               <input inputMode="decimal" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Deixe vazio para somar os serviços" className={inputCls} />
             </div>
+
             <div>
               <label className={labelCls}>Data inicial</label>
               <input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className={inputCls} />
@@ -268,6 +354,33 @@ export default function PromotionsTab({ onAudit }) {
               <label className={labelCls}>Data final</label>
               <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className={inputCls} />
             </div>
+
+            <div>
+              <label className={labelCls}>Dias da semana permitidos</label>
+              <div className="flex flex-wrap gap-1.5">
+                {WEEKDAYS.map((w, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleWeekday(i)}
+                    className={`rounded-full px-3 py-2 text-xs transition ${form.weekdays.includes(i) ? 'bg-gradient-to-r from-plum-600 to-lavender text-white' : 'border border-white/10 text-plum-200/70 hover:border-lavender/50'}`}
+                  >
+                    {w}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-[10px] text-plum-200/50">Se nada marcar, valerá todos os dias.</p>
+            </div>
+            <div>
+              <label className={labelCls}>Horários permitidos (opcional)</label>
+              <div className="flex items-center gap-2">
+                <input type="time" value={form.allowed_time_start} onChange={(e) => setForm({ ...form, allowed_time_start: e.target.value })} className={inputCls} />
+                <span className="text-plum-200/50">até</span>
+                <input type="time" value={form.allowed_time_end} onChange={(e) => setForm({ ...form, allowed_time_end: e.target.value })} className={inputCls} />
+              </div>
+              <p className="mt-1 text-[10px] text-plum-200/50">Ex: só pode usar entre 18:00 e 20:00.</p>
+            </div>
+
             <div>
               <label className={labelCls}>Ordem de exibição</label>
               <input type="number" min={0} value={form.display_order} onChange={(e) => setForm({ ...form, display_order: e.target.value })} className={inputCls} />
@@ -338,6 +451,7 @@ export default function PromotionsTab({ onAudit }) {
         {filtered.map((p, i) => {
           const expired = p.end_date && p.end_date < new Date().toISOString().slice(0, 10);
           const notStarted = p.start_date && p.start_date > new Date().toISOString().slice(0, 10);
+          const hasPerPerson = p.regular_price != null;
           return (
             <li key={p.id} className={`glass glass-hover rounded-2xl p-4 sm:p-5 text-sm ${p.archived ? 'opacity-50' : !p.active ? 'opacity-70' : ''}`}>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -349,6 +463,7 @@ export default function PromotionsTab({ onAudit }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-serif text-lg text-lavender-soft">{p.name}</p>
+                    {p.promo_type && <span className="rounded-full bg-lavender/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-lavender">{PROMO_TYPE_LABELS[p.promo_type] ?? p.promo_type}</span>}
                     {p.featured && <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-200">★ Destaque</span>}
                     {p.archived && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-plum-200/70">Arquivada</span>}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] ${p.active ? 'bg-emerald-500/15 text-emerald-200' : 'bg-white/10 text-plum-200/60'}`}>{p.active ? 'Ativa' : 'Inativa'}</span>
@@ -356,17 +471,24 @@ export default function PromotionsTab({ onAudit }) {
                     {notStarted && <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] text-sky-200">Começa {fmtDate(p.start_date)}</span>}
                   </div>
                   <p className="mt-0.5 text-xs text-plum-200/70">
-                    {p.discount_type === 'percentage' ? `${Number(p.discount_value)}% OFF` : `${brl(p.discount_value)} OFF`}
+                    {hasPerPerson
+                      ? (p.promotional_price != null
+                          ? `${brl(p.regular_price)} → ${brl(p.promotional_price)} / pessoa`
+                          : `${brl(p.regular_price)} / pessoa${p.discount_value ? ` · ${p.discount_type === 'percentage' ? `${Number(p.discount_value)}%` : brl(p.discount_value)} OFF` : ''}`)
+                      : (p.discount_type === 'percentage' ? `${Number(p.discount_value)}% OFF` : `${brl(p.discount_value)} OFF`)}
                     {' · '}{p.participants} participante{p.participants > 1 ? 's' : ''}
-                    {p.price ? ` · ${brl(p.price)}` : p.service_ids.length ? ` · serviços somam ${brl(bundlePrice(p.service_ids))}` : ''}
+                    {!hasPerPerson && p.price ? ` · ${brl(p.price)}` : !hasPerPerson && p.service_ids.length ? ` · serviços somam ${brl(bundlePrice(p.service_ids))}` : ''}
                   </p>
+                  {p.description && <p className="mt-1 text-xs text-plum-200/70 line-clamp-2">{p.description}</p>}
                   {p.service_ids.length > 0 && (
                     <p className="mt-1 text-xs text-plum-200/60 max-w-xl line-clamp-2">
                       Inclui: {p.service_ids.map((id) => svcById[id]?.name ?? '—').join(', ')}
                     </p>
                   )}
                   <p className="mt-1 text-[10px] text-plum-300/40">
-                    Vigência: {fmtDate(p.start_date)} até {fmtDate(p.end_date)} · ordem {p.display_order ?? 0}
+                    Dias: {weekdayLabel(p.weekdays)}
+                    {p.allowed_time_start && p.allowed_time_end ? ` · Horário: ${String(p.allowed_time_start).slice(0, 5)} às ${String(p.allowed_time_end).slice(0, 5)}` : ''}
+                    {' · '}Vigência: {fmtDate(p.start_date)} até {fmtDate(p.end_date)} · ordem {p.display_order ?? 0}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-start gap-1.5 sm:justify-end">
