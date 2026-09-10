@@ -201,7 +201,6 @@ function SiteHome() {
 
   // Filtro de categoria escolhido pelo visitante
   const [categoryFilter, setCategoryFilter] = useState(null);
-  const [showAllServices, setShowAllServices] = useState(false);
   const allServices = asArray(services.data);
   const filteredServices = categoryFilter
     ? allServices.filter((s) => s.categories?.slug === categoryFilter)
