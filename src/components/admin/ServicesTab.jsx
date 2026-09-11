@@ -158,7 +158,6 @@ export default function ServicesTab({ onAudit }) {
       maintenance_price: maintPrice,
       maintenance_promotional_price: maintPromo,
       maintenance_duration_minutes: form.maintenance_enabled ? (Number(form.maintenance_duration_minutes) || 60) : null,
-      maintenance_service_id: null,
     };
     let err;
     if (editingId) {
