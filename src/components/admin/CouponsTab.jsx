@@ -13,8 +13,7 @@ const EMPTY = {
   discount_type: 'percentage', discount_value: '',
   start_date: '', end_date: '', active: true, archived: false,
   max_uses: '', max_uses_per_client: '', min_amount: '',
-  service_ids: [], category_ids: [], promotion_ids: [],
-  allow_with_promotion: false,
+  service_ids: [], category_ids: [],
 };
 
 const fmtDate = (iso) => {
@@ -26,7 +25,6 @@ export default function CouponsTab({ onAudit }) {
   const [items, setItems] = useState([]);
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -39,20 +37,17 @@ export default function CouponsTab({ onAudit }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [cps, svcs, cats, promos] = await Promise.all([
+    const [cps, svcs, cats] = await Promise.all([
       supabase.from('coupons').select('*').order('created_at', { ascending: false }),
       supabase.from('services').select('id, name, category_id, active').order('display_order'),
       supabase.from('categories').select('id, name').order('display_order'),
-      supabase.from('promotions').select('id, name').order('display_order'),
     ]);
     if (cps.error) setError(cps.error.message); else setError(null);
     if (svcs.error) setError((e) => e ?? svcs.error.message);
     if (cats.error) setError((e) => e ?? cats.error.message);
-    if (promos.error) setError((e) => e ?? promos.error.message);
     setItems(asArray(cps.data));
     setServices(asArray(svcs.data));
     setCategories(asArray(cats.data));
-    setPromotions(asArray(promos.data));
     setLoading(false);
   }, []);
 
@@ -88,8 +83,7 @@ export default function CouponsTab({ onAudit }) {
       active: c.active ?? true, archived: c.archived ?? false,
       max_uses: c.max_uses ?? '', max_uses_per_client: c.max_uses_per_client ?? '',
       min_amount: c.min_amount != null && c.min_amount > 0 ? String(c.min_amount).replace('.', ',') : '',
-      service_ids: asArray(c.service_ids), category_ids: asArray(c.category_ids), promotion_ids: asArray(c.promotion_ids),
-      allow_with_promotion: c.allow_with_promotion ?? false,
+      service_ids: asArray(c.service_ids), category_ids: asArray(c.category_ids),
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -126,8 +120,6 @@ export default function CouponsTab({ onAudit }) {
       min_amount: minAmount || 0,
       service_ids: form.service_ids,
       category_ids: form.category_ids,
-      promotion_ids: form.promotion_ids,
-      allow_with_promotion: form.allow_with_promotion,
     };
     let err;
     if (editingId) {
@@ -161,8 +153,7 @@ export default function CouponsTab({ onAudit }) {
       start_date: c.start_date, end_date: c.end_date,
       active: false, archived: false,
       max_uses: c.max_uses, max_uses_per_client: c.max_uses_per_client, min_amount: c.min_amount,
-      service_ids: c.service_ids, category_ids: c.category_ids, promotion_ids: c.promotion_ids,
-      allow_with_promotion: c.allow_with_promotion,
+      service_ids: c.service_ids, category_ids: c.category_ids,
     });
     if (err) return alert(err.message);
     await logAudit('duplicou cupom', null, `${c.code}COPIA`);
@@ -276,9 +267,6 @@ export default function CouponsTab({ onAudit }) {
             </div>
             <div className="flex flex-col justify-end gap-2 pb-1">
               <label className="flex items-center gap-2 text-sm text-plum-200/80">
-                <input type="checkbox" checked={form.allow_with_promotion} onChange={(e) => setForm({ ...form, allow_with_promotion: e.target.checked })} className="accent-[#c9a7e8]" /> Permitir acumular com promoções
-              </label>
-              <label className="flex items-center gap-2 text-sm text-plum-200/80">
                 <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} className="accent-[#c9a7e8]" /> Ativo
               </label>
               <label className="flex items-center gap-2 text-sm text-plum-200/80">
@@ -287,7 +275,6 @@ export default function CouponsTab({ onAudit }) {
             </div>
             <SelectionBox field="service_ids" options={services} label="Serviços permitidos" />
             <SelectionBox field="category_ids" options={categories} label="Categorias permitidas" />
-            <SelectionBox field="promotion_ids" options={promotions} label="Promoções permitidas" />
           </div>
           {isExpired && <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">Atenção: a data final já passou — este cupom será recusado como expirado.</p>}
           <div className="flex flex-wrap gap-3">
@@ -319,7 +306,6 @@ export default function CouponsTab({ onAudit }) {
                     {c.discount_type === 'percentage' ? `${Number(c.discount_value)}% OFF` : `${brl(c.discount_value)} OFF`}
                     {' · usos: '}{c.uses}{c.max_uses != null ? `/${c.max_uses}` : ''}
                     {c.min_amount > 0 ? ` · mín. ${brl(c.min_amount)}` : ''}
-                    {` · ${c.allow_with_promotion ? 'acumula com promoção' : 'não acumula com promoção'}`}
                   </p>
                   {c.description && <p className="mt-1 text-xs text-plum-200/60 line-clamp-2">{c.description}</p>}
                   <p className="mt-1 text-[10px] text-plum-300/40">

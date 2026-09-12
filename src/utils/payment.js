@@ -40,17 +40,13 @@ export const WHATSAPP_COMMERCIAL = '5514998792169';
 
 export function buildBookingMessage({
   service, date, time, name, whatsapp, notes, paymentLabel, amount,
-  promotion = null, participants = null, couponCode = null, totalDiscount = null, originalAmount = null,
+  couponCode = null, totalDiscount = null, originalAmount = null,
 }) {
   const brl = (v) => `R$ ${Number(v).toFixed(2).replace('.', ',')}`;
   const lines = [
     '✨ *Mari Lash Designer* — Novo agendamento ✨',
     '',
   ];
-  if (promotion) {
-    lines.push(`🎉 *Promoção:* ${promotion}`);
-    if (participants?.length) lines.push(`👥 *Participantes:* ${participants.join(', ')}`);
-  }
   lines.push(
     `💜 *Serviço:* ${service}`,
     `📅 *Data:* ${date}`,

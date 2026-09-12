@@ -92,20 +92,16 @@ class BookingErrorBoundary extends Component {
   }
 }
 
-export default function BookingModal({ services, promotions, loading = false, error = null, presetService = null, onClose }) {
+export default function BookingModal({ services, loading = false, error = null, presetService = null, onClose }) {
   const [step, setStep] = useState(presetService ? 1 : 0);
-  // Seleção: { type: 'service' | 'promotion', data }
   // `_asMaintenance` chega do card público quando a cliente clicou em "Agendar manutenção"
   const [service, setService] = useState(presetService);
   const [asMaintenance, setAsMaintenance] = useState(!!presetService?._asMaintenance);
-  const [promotion, setPromotion] = useState(null);
-  const [tab, setTab] = useState(presetService ? 'service' : 'service');
   const [date, setDate] = useState(null);
   const [time, setTime] = useState(null);
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [notes, setNotes] = useState('');
-  const [participants, setParticipants] = useState([]);
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount_amount }
   const [couponMsg, setCouponMsg] = useState(null); // { type: 'ok'|'err', text }
@@ -120,7 +116,6 @@ export default function BookingModal({ services, promotions, loading = false, er
   // Normalização segura: garante que valores vindos do Supabase sejam sempre arrays
   const asArray = (value) => (Array.isArray(value) ? value : []);
   const serviceList = asArray(services);
-  const promotionList = asArray(promotions);
   const [pix, setPix] = useState({ pix_key: '', pix_holder_name: '', pix_city: '' });
   const [copied, setCopied] = useState(false);
   const [hoursError, setHoursError] = useState(null);
@@ -128,74 +123,28 @@ export default function BookingModal({ services, promotions, loading = false, er
   const [submitError, setSubmitError] = useState(null);
   const [done, setDone] = useState(false);
 
-  // Duração efetiva: manutenção usa a duração própria; promoção soma os serviços incluídos
+  // Duração efetiva: manutenção usa a duração própria do serviço
   const selectedDuration = useMemo(() => {
     if (service && asMaintenance) return Number(service.maintenance_duration_minutes) || Number(service.duration_minutes) || 60;
     if (service) return Number(service.duration_minutes) || 60;
-    if (promotion) {
-      const ids = asArray(promotion.service_ids);
-      if (ids.length) {
-        const total = serviceList
-          .filter((s) => ids.includes(s.id))
-          .reduce((acc, s) => acc + (Number(s.duration_minutes) || 0), 0);
-        if (total > 0) return total;
-      }
-    }
     return 60;
-  }, [service, asMaintenance, promotion, serviceList]);
+  }, [service, asMaintenance]);
 
   // Estimativa de valores (o valor FINAL é sempre recalculado no banco via create_booking)
   const pricing = useMemo(() => {
-    let original = 0;
-    let promoDiscount = 0;
-    if (service) {
-      original = asMaintenance
+    const original = service
+      ? asMaintenance
         ? Number(service.maintenance_promotional_price ?? service.maintenance_price) || 0
-        : Number(service.promotional_price ?? service.price) || 0;
-    } else if (promotion) {
-      const ids = asArray(promotion.service_ids);
-      const participants = Math.max(Number(promotion.participants) || 1, 1);
-      const perPerson = promotion.regular_price != null;
-      if (perPerson) {
-        const reg = Number(promotion.regular_price) || 0;
-        const promo = promotion.promotional_price != null ? Number(promotion.promotional_price) : NaN;
-        original = reg * participants;
-        promoDiscount = Number.isFinite(promo)
-          ? Math.max(original - promo * participants, 0)
-          : (promotion.discount_type === 'percentage'
-              ? Math.round(original * (Number(promotion.discount_value) || 0)) / 100
-              : Math.min(Number(promotion.discount_value) || 0, original));
-      } else {
-        const sum = ids.length
-          ? serviceList
-              .filter((s) => ids.includes(s.id))
-              .reduce((acc, s) => acc + (Number(s.promotional_price ?? s.price) || 0), 0)
-          : 0;
-        original = promotion.price != null ? Number(promotion.price) : sum;
-        const dv = Number(promotion.discount_value) || 0;
-        promoDiscount = promotion.discount_type === 'percentage'
-          ? Math.round(original * dv) / 100
-          : Math.min(dv, original);
-      }
-    }
+        : Number(service.promotional_price ?? service.price) || 0
+      : 0;
     const couponDiscount = appliedCoupon ? Number(appliedCoupon.discount_amount) || 0 : 0;
-    const totalDiscount = Math.min(promoDiscount + couponDiscount, original);
-    return { original, promoDiscount, couponDiscount, totalDiscount, final: Math.max(original - totalDiscount, 0) };
-  }, [service, asMaintenance, promotion, appliedCoupon, serviceList]);
+    const totalDiscount = Math.min(couponDiscount, original);
+    return { original, couponDiscount, totalDiscount, final: Math.max(original - totalDiscount, 0) };
+  }, [service, asMaintenance, appliedCoupon]);
 
-  // Quando a promoção exige participantes, preparamos a lista de nomes
-  useEffect(() => {
-    const n = promotion ? Number(promotion.participants) || 1 : 1;
-    setParticipants((prev) => {
-      const arr = Array.from({ length: Math.max(n, 1) }, (_, i) => prev[i] || '');
-      return arr;
-    });
-  }, [promotion]);
-
-  // Trocar de seleção limpa cupom aplicado (regras podem diferir por serviço/promoção)
-  const choose = (type, item) => {
-    setService(type === 'service' ? item : null);
-    setPromotion(type === 'promotion' ? item : null);
+  // Trocar de seleção limpa cupom aplicado (regras podem diferir por serviço)
+  const choose = (item) => {
+    setService(item);
     setAsMaintenance(false);
     setAppliedCoupon(null);
     setCouponInput('');
@@ -206,7 +155,6 @@ export default function BookingModal({ services, promotions, loading = false, er
   // Manutenção do próprio serviço (preço/duração embutidos no registro)
   const chooseMaintenance = (item) => {
     setService(item);
-    setPromotion(null);
     setAsMaintenance(true);
     setAppliedCoupon(null);
     setCouponInput('');
@@ -276,7 +224,7 @@ export default function BookingModal({ services, promotions, loading = false, er
   };
 
   const slots = useMemo(() => {
-    if (!date || (!service && !promotion)) return [];
+    if (!date || !service) return [];
     const d = new Date(`${date}T12:00:00`);
     const periods = hoursFor(d.getDay());
     if (!periods) return [];
@@ -302,7 +250,7 @@ export default function BookingModal({ services, promotions, loading = false, er
       }
     }
     return out;
-  }, [date, service, promotion, selectedDuration, hours, takenSlots]);
+  }, [date, service, selectedDuration, hours, takenSlots]);
 
   // Calendário do mês (navegação simples)
   const [cursor, setCursor] = useState(() => new Date());
@@ -318,16 +266,11 @@ export default function BookingModal({ services, promotions, loading = false, er
 
   const blockedMap = useMemo(() => Object.fromEntries(asArray(blocked).map((b) => [b.blocked_date, b.reason])), [blocked]);
 
-  const participantsRequired = promotion ? Math.max(Number(promotion.participants) || 1, 1) : 1;
-  const participantsOk =
-    participantsRequired <= 1 ||
-    participants.slice(0, participantsRequired).every((n) => n.trim().length >= 2);
-
   const canContinue = [
-    !!service || !!promotion,
+    !!service,
     !!date,
     !!time && !checking,
-    name.trim().length >= 3 && whatsapp.replace(/\D/g, '').length >= 10 && participantsOk,
+    name.trim().length >= 3 && whatsapp.replace(/\D/g, '').length >= 10,
     !!payment,
     true,
   ][step];
@@ -341,11 +284,10 @@ export default function BookingModal({ services, promotions, loading = false, er
     try {
       const { data, error } = await supabase.rpc('validate_coupon', {
         p_code: code,
-        p_base_amount: Math.max(pricing.original - pricing.promoDiscount, 0),
+        p_base_amount: pricing.original,
         p_client_whatsapp: whatsapp.trim(),
         p_service_id: service?.id ?? null,
         p_category_id: service?.category_id ?? null,
-        p_promotion_id: promotion?.id ?? null,
       });
       if (error) throw error;
       if (data?.valid) {
@@ -419,11 +361,10 @@ export default function BookingModal({ services, promotions, loading = false, er
     setSubmitting(true);
     setSubmitError(null);
     try {
-      // Toda a validação (serviço, promoção, cupom, preços, conflito de horário)
+      // Toda a validação (serviço, cupom, preços, conflito de horário)
       // acontece no banco, via RPC create_booking — o frontend nunca dita preços.
       const { data, error: err } = await supabase.rpc('create_booking', {
         p_service_id: service?.id ?? null,
-        p_promotion_id: promotion?.id ?? null,
         p_appointment_type: service && asMaintenance ? 'maintenance' : 'service',
         p_client_name: name.trim(),
         p_client_whatsapp: whatsapp.trim(),
@@ -432,9 +373,6 @@ export default function BookingModal({ services, promotions, loading = false, er
         p_payment_method: payment || 'pending',
         p_notes: notes.trim() || null,
         p_coupon_code: appliedCoupon ? appliedCoupon.code : null,
-        p_participants: participantsRequired > 1
-          ? participants.slice(0, participantsRequired).map((n) => ({ name: n.trim() }))
-          : null,
       });
       if (err) throw err;
       if (!data?.ok) {
@@ -445,7 +383,7 @@ export default function BookingModal({ services, promotions, loading = false, er
       setResult(data);
       const dateLabel = `${WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, ${fmtBR(date)}`;
       openWhatsApp(buildBookingMessage({
-        service: service?.name ? (asMaintenance ? `${service.name} (Manutenção)` : service.name) : promotion?.name,
+        service: service?.name ? (asMaintenance ? `${service.name} (Manutenção)` : service.name) : '',
         date: dateLabel,
         time,
         name: name.trim(),
@@ -453,8 +391,6 @@ export default function BookingModal({ services, promotions, loading = false, er
         notes: notes.trim(),
         paymentLabel: PAYMENT_LABELS[payment] || 'A combinar',
         amount: data.final_amount,
-        promotion: promotion?.name || null,
-        participants: participantsRequired > 1 ? participants.slice(0, participantsRequired).map((n) => n.trim()) : null,
         couponCode: data.coupon_discount > 0 ? (couponInput.trim().toUpperCase()) : null,
         totalDiscount: data.total_discount > 0 ? data.total_discount : null,
         originalAmount: data.original_amount,
@@ -468,16 +404,15 @@ export default function BookingModal({ services, promotions, loading = false, er
   }
 
   function reset() {
-    setStep(0); setService(null); setAsMaintenance(false); setPromotion(null); setDate(null); setTime(null);
-    setName(''); setWhatsapp(''); setNotes(''); setParticipants([]);
+    setStep(0); setService(null); setAsMaintenance(false); setDate(null); setTime(null);
+    setName(''); setWhatsapp(''); setNotes('');
     setCouponInput(''); setAppliedCoupon(null); setCouponMsg(null);
     setPayment(null); setResult(null); setDone(false); setSubmitError(null);
   }
 
   const selectedLabel = service
     ? `${service.name}${asMaintenance ? ' (Manutenção)' : ''}`
-    : promotion?.name || '';
-  const isPromo = !!promotion;
+    : '';
 
   return (
     <div
@@ -567,101 +502,34 @@ export default function BookingModal({ services, promotions, loading = false, er
               <div className="flex justify-center py-14"><Spinner /></div>
             ) : (
               <>
-                {/* PASSO 0 — Serviço OU promoção */}
+                {/* PASSO 0 — Serviço */}
                 {step === 0 && (
-                  <div>
-                    <div className="mb-4 flex gap-2">
-                      {['service', 'promotion'].map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => setTab(t)}
-                          className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.15em] transition ${tab === t ? 'bg-gradient-to-r from-plum-600 to-lavender text-white' : 'border border-plum-500/25 text-plum-200/80 hover:border-plum-400/50'}`}
-                        >
-                          {t === 'service' ? 'Serviços' : 'Promoções'}
+                  <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                    {serviceList.length === 0 ? (
+                      <p className="py-8 text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento. 💜</p>
+                    ) : serviceList.map((s) => (
+                      <div
+                        key={s.id}
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-plum-500/20 bg-plum-900/30 px-4 py-3 transition hover:border-lavender/50 hover:bg-plum-800/40"
+                      >
+                        <button onClick={() => choose(s)} className="min-w-0 flex-1 text-left">
+                          <span className="block text-sm font-medium text-plum-100">{s.name}</span>
+                          <span className="block text-xs text-plum-200/60">{s.duration_minutes || 60} min</span>
                         </button>
-                      ))}
-                    </div>
-                    <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                      {tab === 'service' ? (
-                        serviceList.length === 0 ? (
-                          <p className="py-8 text-center text-sm text-plum-200/70">Nenhum serviço disponível no momento. 💜</p>
-                        ) : serviceList.map((s) => (
-                          <div
-                            key={s.id}
-                            className="flex items-center justify-between gap-3 rounded-2xl border border-plum-500/20 bg-plum-900/30 px-4 py-3 transition hover:border-lavender/50 hover:bg-plum-800/40"
-                          >
-                            <button onClick={() => choose('service', s)} className="min-w-0 flex-1 text-left">
-                              <span className="block text-sm font-medium text-plum-100">{s.name}</span>
-                              <span className="block text-xs text-plum-200/60">{s.duration_minutes || 60} min</span>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {s.maintenance_enabled && s.maintenance_price != null && (
+                            <button
+                              onClick={() => chooseMaintenance(s)}
+                              className="rounded-full border border-lavender/40 px-3 py-1.5 text-[11px] text-lavender transition hover:bg-lavender/10"
+                              title={`Manutenção: ${brl(s.maintenance_promotional_price ?? s.maintenance_price)} · ${s.maintenance_duration_minutes || 60} min`}
+                            >
+                              ↻ Manutenção
                             </button>
-                            <div className="flex shrink-0 items-center gap-2">
-                              {s.maintenance_enabled && s.maintenance_price != null && (
-                                <button
-                                  onClick={() => chooseMaintenance(s)}
-                                  className="rounded-full border border-lavender/40 px-3 py-1.5 text-[11px] text-lavender transition hover:bg-lavender/10"
-                                  title={`Manutenção: ${brl(s.maintenance_promotional_price ?? s.maintenance_price)} · ${s.maintenance_duration_minutes || 60} min`}
-                                >
-                                  ↻ Manutenção
-                                </button>
-                              )}
-                              <button onClick={() => choose('service', s)} className="text-sm text-lavender">{brl(s.promotional_price ?? s.price)}</button>
-                            </div>
-                          </div>
-                        ))
-                      ) : promotionList.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-plum-200/70">Nenhuma promoção ativa no momento. 💜</p>
-                      ) : promotionList.map((p) => {
-                        const ids = asArray(p.service_ids);
-                        const participants = Math.max(Number(p.participants) || 1, 1);
-                        const perPerson = p.regular_price != null;
-                        const base = perPerson
-                          ? Number(p.regular_price)
-                          : p.price != null
-                            ? Number(p.price)
-                            : serviceList.filter((s) => ids.includes(s.id)).reduce((a, s) => a + (Number(s.promotional_price ?? s.price) || 0), 0);
-                        const finalVal = perPerson && p.promotional_price != null
-                          ? Number(p.promotional_price)
-                          : Math.max(base - (p.discount_type === 'percentage'
-                              ? Math.round(base * (Number(p.discount_value) || 0)) / 100
-                              : Math.min(Number(p.discount_value) || 0, base)), 0);
-                        const totalBase = perPerson ? base * participants : base;
-                        const totalFinal = perPerson ? finalVal * participants : finalVal;
-                        const weekdaysOk = asArray(p.weekdays).length;
-                        return (
-                          <button
-                            key={p.id}
-                            onClick={() => choose('promotion', p)}
-                            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-plum-500/20 bg-plum-900/30 px-4 py-3 text-left transition hover:border-lavender/50 hover:bg-plum-800/40"
-                          >
-                            <span className="min-w-0">
-                              <span className="block text-sm font-medium text-plum-100">{p.name}</span>
-                              <span className="block text-xs text-plum-200/60">
-                                {participants > 1 ? `${participants} pessoas · ` : ''}
-                                {perPerson ? `${brl(finalVal)} / pessoa` : `${brl(totalFinal)} total`}
-                                {ids.length ? ` · ${ids.length} serviço(s)` : ''}
-                              </span>
-                              {p.description && <span className="mt-0.5 block text-[11px] text-plum-200/50 line-clamp-1">{p.description}</span>}
-                              {weekdaysOk > 0 && weekdaysOk < 7 && (
-                                <span className="mt-0.5 block text-[10px] text-lavender/70">
-                                  Vale em: {weekdaysOk === 1 ? 'apenas 1 dia' : `${weekdaysOk} dias da semana`}
-                                </span>
-                              )}
-                              {p.allowed_time_start && p.allowed_time_end && (
-                                <span className="mt-0.5 block text-[10px] text-lavender/70">
-                                  Horário: {String(p.allowed_time_start).slice(0, 5)} às {String(p.allowed_time_end).slice(0, 5)}
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-right shrink-0">
-                              {totalBase > totalFinal && <span className="block text-xs text-plum-200/50 line-through">{brl(totalBase)}</span>}
-                              <span className="text-sm text-lavender">
-                                {perPerson ? `${brl(totalFinal)} (${participants} pess.)` : brl(totalFinal)}
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                          )}
+                          <button onClick={() => choose(s)} className="text-sm text-lavender">{brl(s.promotional_price ?? s.price)}</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -743,7 +611,7 @@ export default function BookingModal({ services, promotions, loading = false, er
                   </div>
                 )}
 
-                {/* PASSO 3 — Dados + participantes + cupom */}
+                {/* PASSO 3 — Dados + cupom */}
                 {step === 3 && (
                   <div className="space-y-4">
                     <div>
@@ -754,29 +622,6 @@ export default function BookingModal({ services, promotions, loading = false, er
                       <label htmlFor="bk-wa" className="mb-1 block text-xs uppercase tracking-wider text-plum-200/70">WhatsApp *</label>
                       <input id="bk-wa" inputMode="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="w-full rounded-xl border border-plum-500/25 bg-plum-900/40 px-4 py-3 text-sm text-plum-100 outline-none transition focus:border-lavender/60" placeholder="(14) 99999-9999" />
                     </div>
-
-                    {participantsRequired > 1 && (
-                      <div className="rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4">
-                        <p className="mb-3 text-xs uppercase tracking-wider text-lavender">
-                          👥 Promoção para {participantsRequired} participantes
-                        </p>
-                        <div className="space-y-2">
-                          {participants.slice(0, participantsRequired).map((p, i) => (
-                            <div key={i}>
-                              <label htmlFor={`bk-part-${i}`} className="mb-1 block text-xs text-plum-200/70">Participante {i + 1}</label>
-                              <input
-                                id={`bk-part-${i}`}
-                                value={p}
-                                onChange={(e) => setParticipants((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
-                                className="w-full rounded-xl border border-plum-500/25 bg-plum-900/40 px-3 py-2.5 text-sm text-plum-100 outline-none transition focus:border-lavender/60"
-                                placeholder="Nome completo"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        {!participantsOk && <p className="mt-2 text-xs text-amber-300/90">Preencha o nome de todas as {participantsRequired} participantes para continuar.</p>}
-                      </div>
-                    )}
 
                     <div>
                       <label htmlFor="bk-notes" className="mb-1 block text-xs uppercase tracking-wider text-plum-200/70">Observações (opcional)</label>
@@ -915,20 +760,9 @@ export default function BookingModal({ services, promotions, loading = false, er
                 {step === 5 && (
                   <div className="space-y-3">
                     <div className="rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4 text-sm">
-                      {isPromo && (
-                        <p className="mb-1 text-plum-200/80">🎉 Promoção: <strong className="text-lavender">{promotion.name}</strong></p>
-                      )}
                       <p className="text-plum-200/80">
-                        {isPromo ? 'Inclui' : 'Serviço'}: <strong className="text-plum-100">{selectedLabel}</strong>
+                        Serviço: <strong className="text-plum-100">{selectedLabel}</strong>
                       </p>
-                      {isPromo && asArray(promotion.service_ids).length > 0 && (
-                        <p className="mt-0.5 text-xs text-plum-200/60">
-                          {serviceList.filter((s) => asArray(promotion.service_ids).includes(s.id)).map((s) => s.name).join(' + ')}
-                        </p>
-                      )}
-                      {participantsRequired > 1 && (
-                        <p className="mt-1 text-xs text-plum-200/60">Participantes: {participants.slice(0, participantsRequired).map((n) => n.trim()).join(', ')}</p>
-                      )}
                       {date && <p className="mt-1 text-plum-200/80">📅 {WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]}, {fmtBR(date)} às {time}</p>}
                       <p className="mt-1 text-plum-200/80">👩 {name.trim()} · 📱 {whatsapp.trim()}</p>
                       <p className="mt-1 text-plum-200/80">💳 {PAYMENT_LABELS[payment] || 'A combinar'}</p>
@@ -937,10 +771,7 @@ export default function BookingModal({ services, promotions, loading = false, er
 
                     {/* Resumo de valores — só mostra linhas de desconto quando existem */}
                     <div className="rounded-2xl border border-plum-500/25 bg-plum-900/30 p-4 text-sm">
-                      <div className="flex justify-between text-plum-200/80"><span>{isPromo ? 'Valor da promoção' : 'Serviço'}</span><span>{brl(pricing.original)}</span></div>
-                      {pricing.promoDiscount > 0 && (
-                        <div className="flex justify-between text-emerald-300"><span>Promoção</span><span>−{brl(pricing.promoDiscount)}</span></div>
-                      )}
+                      <div className="flex justify-between text-plum-200/80"><span>Serviço</span><span>{brl(pricing.original)}</span></div>
                       {pricing.couponDiscount > 0 && (
                         <div className="flex justify-between text-emerald-300"><span>Cupom {appliedCoupon?.code}</span><span>−{brl(pricing.couponDiscount)}</span></div>
                       )}

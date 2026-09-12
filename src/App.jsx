@@ -172,10 +172,6 @@ function SiteHome() {
     order: { col: 'display_order' },
   });
   const categories = useFetch('categories', { filters: [['active', 'eq', true]], order: { col: 'display_order' } });
-  const promotions = useFetch('promotions', {
-    filters: [['active', 'eq', true], ['archived', 'eq', false]],
-    order: { col: 'display_order' },
-  });
   const testimonials = useFetch('testimonials', { filters: [['approved', 'eq', true]], order: { col: 'sort_order' } });
   const { settings } = useSettings();
   const instagram = settings.instagram;
@@ -402,11 +398,10 @@ function SiteHome() {
         <BookingErrorBoundary onClose={() => { setScheduleOpen(false); setPresetService(null); }}>
           {/* Modal de escolha agora vive dentro do ServiceCard (overlay no próprio card). */}
 
-      <BookingModal
+          <BookingModal
             services={services.data}
-            promotions={promotions.data}
-            loading={services.loading || promotions.loading}
-            error={services.error || promotions.error}
+            loading={services.loading}
+            error={services.error}
             presetService={presetService}
             onClose={() => { setScheduleOpen(false); setPresetService(null); }}
           />

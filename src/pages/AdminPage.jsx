@@ -7,7 +7,6 @@ import ServicesTab from '../components/admin/ServicesTab';
 import BannersTab from '../components/admin/BannersTab';
 import HoursTab from '../components/admin/HoursTab';
 import CategoriesTab from '../components/admin/CategoriesTab';
-import PromotionsTab from '../components/admin/PromotionsTab';
 import CouponsTab from '../components/admin/CouponsTab';
 import HistoryTab from '../components/admin/HistoryTab';
 import DashboardTab from '../components/admin/DashboardTab';
@@ -18,7 +17,6 @@ const NAV = [
   { to: '/admin', label: 'Dashboard', end: true },
   { to: '/admin/servicos', label: 'Serviços' },
   { to: '/admin/categorias', label: 'Categorias' },
-  { to: '/admin/promocoes', label: 'Promoções' },
   { to: '/admin/cupons', label: 'Cupons' },
   { to: '/admin/agendamentos', label: 'Agendamentos' },
   { to: '/admin/banners', label: 'Banners' },
@@ -402,7 +400,6 @@ export default function AdminPage() {
           <Route path="servicos" element={<ServicesTab onAudit={() => setAuditTick((t) => t + 1)} />} />
           <Route path="servicos/historico" element={<Navigate to="/admin/historico" replace />} />
           <Route path="categorias" element={<CategoriesTab />} />
-          <Route path="promocoes" element={<PromotionsTab onAudit={() => setAuditTick((t) => t + 1)} />} />
           <Route path="cupons" element={<CouponsTab onAudit={() => setAuditTick((t) => t + 1)} />} />
           <Route path="hoje" element={<TodayTab />} />
           <Route path="agendamentos" element={<AgendaTab />} />
