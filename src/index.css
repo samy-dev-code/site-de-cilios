@@ -161,6 +161,41 @@ body {
 }
 
 /* ─────────────────────────────────────────────
+   DEPOIMENTOS — carrossel em loop contínuo
+   ───────────────────────────────────────────── */
+.testimonials-marquee {
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Esconde a barra de rolagem mantendo o swipe no toque */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+}
+.testimonials-marquee::-webkit-scrollbar {
+  display: none;
+}
+.testimonials-marquee:active {
+  cursor: grabbing;
+}
+.testimonials-marquee:focus-visible {
+  outline: 2px solid #A855F7;
+  outline-offset: -2px;
+}
+
+/* Laterais suavizadas (fade) do carrossel de depoimentos */
+.marquee-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 3rem, #000 calc(100% - 3rem), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 3rem, #000 calc(100% - 3rem), transparent);
+}
+
+/* Cards do carrossel com a mesma largura, independentemente do tamanho do texto */
+.testimonials-marquee figure {
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────────
    TIPOGRAFIA e detalhes
    ───────────────────────────────────────────── */
 .text-gradient {

@@ -6,7 +6,7 @@ import { useFetch } from './hooks/useFetch';
 import { supabase } from './integrations/supabase/client';
 import BannerCarousel from './components/BannerCarousel';
 import ServiceCard from './components/ServiceCard';
-import TestimonialCard from './components/TestimonialCard';
+import TestimonialsCarousel from './components/TestimonialsCarousel';
 import Gallery from './components/Gallery';
 import BookingModal, { BookingErrorBoundary } from './components/BookingModal';
 import { Reveal } from './components/Reveal';
@@ -351,16 +351,23 @@ function SiteHome() {
         <Gallery />
       </Section>
 
-      {/* Depoimentos */}
-      <Section id="depoimentos" eyebrow="O que dizem" title="Depoimentos">
-        {testimonials.loading ? (
-          <Loader />
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {asArray(testimonials.data).map((t) => <TestimonialCard key={t.id} item={t} />)}
-          </div>
-        )}
-      </Section>
+      {/* Depoimentos — carrossel em loop contínuo, ocupando toda a largura */}
+      <section id="depoimentos" className="relative py-16 sm:py-24">
+        <div className="mx-auto mb-10 max-w-6xl px-4 text-center">
+          <Reveal>
+            <p className="text-xs uppercase tracking-[0.35em] text-plum-300/80">O que dizem</p>
+            <h2 className="mt-3 font-serif text-4xl sm:text-5xl text-gradient">Depoimentos</h2>
+            <div className="divider-fade mt-6 mx-auto max-w-xs" />
+          </Reveal>
+        </div>
+        <Reveal delay={0.15}>
+          <TestimonialsCarousel
+            items={asArray(testimonials.data)}
+            loading={testimonials.loading}
+            error={testimonials.error}
+          />
+        </Reveal>
+      </section>
 
       {/* CTA final */}
       <section className="mx-auto max-w-6xl px-4 pb-24">
